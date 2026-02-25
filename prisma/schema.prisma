@@ -1,0 +1,35 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Esim {
+  id              Int         @id @default(autoincrement())
+  country         String?
+  planName        String?
+  days            Int?
+  batchName       String?
+  status          EsimStatus  @default(UNUSED)
+  costPrice       Float?
+  sellPrice       Float?
+  customerName    String?
+  customerContact String?
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+enum EsimStatus {
+  UNUSED
+  ASSIGNED
+  ACTIVATED
+  VOID
+}
