@@ -1,0 +1,2 @@
+﻿[phases.install]
+cmds = ["PRISMA_SKIP_NODE_ENGINE_CHECK=1 npm ci"]
