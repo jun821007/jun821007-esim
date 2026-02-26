@@ -45,7 +45,14 @@ async function createFromFiles(formData: FormData) {
 
   const files = formData.getAll("qrFiles") as File[];
 
-  const uploadDir = path.join(process.cwd(), "public", "qr");
+  const uploadBase =
+    process.env.DATABASE_PATH && path.isAbsolute(process.env.DATABASE_PATH)
+      ? path.dirname(process.env.DATABASE_PATH)
+      : path.join(process.cwd(), "public");
+  const uploadDir = path.join(uploadBase, "qr");
+  const useApiRoute = Boolean(
+    process.env.DATABASE_PATH && path.isAbsolute(process.env.DATABASE_PATH)
+  );
   await fs.mkdir(uploadDir, { recursive: true });
 
   let count = 0;
@@ -84,7 +91,7 @@ async function createFromFiles(formData: FormData) {
         costPrice: null,
         sellPrice: null,
         notes,
-        qrPath: `/qr/${fileName}`,
+        qrPath: useApiRoute ? `/api/qr/${fileName}` : `/qr/${fileName}`,
       });
       count++;
     }
