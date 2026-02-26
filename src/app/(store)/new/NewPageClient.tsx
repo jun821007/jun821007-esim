@@ -1,7 +1,35 @@
 "use client";
 
+import { useFormStatus } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
+
+export function QrUploadSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <>
+      {pending && (
+        <div className="h-1 w-full overflow-hidden rounded-full bg-zinc-200">
+          <div className="h-full w-full animate-pulse bg-zinc-500" />
+        </div>
+      )}
+      <button
+        type="submit"
+        disabled={pending}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-70 hover:bg-zinc-800 active:bg-zinc-950 disabled:hover:bg-zinc-900"
+      >
+        {pending ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            上傳中，請勿重複按...
+          </>
+        ) : (
+          "依圖片批量入庫"
+        )}
+      </button>
+    </>
+  );
+}
 
 export function UploadedModal() {
   const searchParams = useSearchParams();

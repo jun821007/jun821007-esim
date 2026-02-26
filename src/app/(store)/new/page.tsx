@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createEsimRow, findEsimsByIds } from "@/lib/db";
 import { getSession } from "@/lib/session";
-import { CollapsibleSection, UploadedModal } from "./NewPageClient";
+import { CollapsibleSection, QrUploadSubmitButton, UploadedModal } from "./NewPageClient";
 
 export const dynamic = "force-dynamic";
 
@@ -263,12 +263,7 @@ export default async function NewPage() {
                 </p>
               </div>
 
-              <button
-                type="submit"
-                className="inline-flex w-full items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 active:bg-zinc-950"
-              >
-                依圖片批量入庫
-              </button>
+              <QrUploadSubmitButton />
             </form>
           </CollapsibleSection>
 
