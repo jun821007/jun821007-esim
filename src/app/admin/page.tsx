@@ -38,9 +38,10 @@ export default async function AdminPage() {
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              蝞∠?????            </h1>
+              管理者後台
+            </h1>
             <p className="mt-1 text-sm text-zinc-500">
-              ?摨振撣唾?
+              開新店家帳號
             </p>
           </div>
           <form action="/api/auth/logout?next=/admin/login" method="POST">
@@ -48,22 +49,22 @@ export default async function AdminPage() {
               type="submit"
               className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
             >
-              ?餃
+              登出
             </button>
           </form>
         </header>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-medium text-zinc-800">?摨振撣唾?</h2>
+          <h2 className="text-sm font-medium text-zinc-800">開新店家帳號</h2>
           <AdminCreateStoreForm action={createStoreAction} />
         </section>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-sm font-medium text-zinc-800">
-            撌脤?摨振嚗 {stores.length} ??
+            已開店家（共 {stores.length} 間）
           </h2>
           {stores.length === 0 ? (
-            <p className="text-sm text-zinc-500">撠摨振撣唾?</p>
+            <p className="text-sm text-zinc-500">尚無店家帳號</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {stores.map((s) => (
