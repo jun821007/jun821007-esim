@@ -7,5 +7,7 @@ export async function POST(request: Request) {
   const url = new URL(request.url);
   const next = url.searchParams.get("next") || "/login";
   const path = next.startsWith("/") ? next : `/${next}`;
-  return NextResponse.redirect(path);
+  const proto = request.headers.get("x-forwarded-proto") || url.protocol.slice(0, -1);
+  const host = request.headers.get("x-forwarded-host") || url.host;
+  return NextResponse.redirect(`${proto}://${host}${path}`);
 }
