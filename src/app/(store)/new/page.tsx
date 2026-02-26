@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createEsimRow, findEsimsByIds } from "@/lib/db";
 import { getSession } from "@/lib/session";
-import { CollapsibleSection, QrUploadSubmitButton, UploadedModal } from "./NewPageClient";
+import { CollapsibleSection, QrUploadSubmitButton, UploadedModal, UploadErrorModal } from "./NewPageClient";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +36,7 @@ function parseIdsFromShareUrl(input: string): number[] {
 async function createFromFiles(formData: FormData) {
   "use server";
 
+  try {
   const session = await getSession();
   const storeId = session.storeId ?? 1;
 
@@ -99,6 +100,9 @@ async function createFromFiles(formData: FormData) {
 
   revalidatePath("/");
   redirect(`/new?uploaded=${count}`);
+  } catch {
+    redirect("/new?error=upload");
+  }
 }
 
 async function createFromUrls(formData: FormData) {
@@ -200,6 +204,7 @@ export default async function NewPage() {
         </header>
 
         <Suspense fallback={null}>
+          <UploadErrorModal />
           <UploadedModal />
         </Suspense>
 

@@ -21,10 +21,10 @@ export function QrUploadSubmitButton() {
         {pending ? (
           <>
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            上傳中，請勿重複按...
+            上傳中，請勿重複按…
           </>
         ) : (
-          "依圖片批量入庫"
+          "依方案批量入庫"
         )}
       </button>
     </>
@@ -62,13 +62,52 @@ export function UploadedModal() {
             onClick={close}
             className="rounded-full bg-zinc-900 px-6 py-2 text-sm font-medium text-white hover:bg-zinc-800"
           >
-            確定
+            蝣箏?
           </button>
         </div>
       </div>
     </div>
   );
 }
+
+export function UploadErrorModal() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get("error");
+  const [open, setOpen] = useState(error === "upload");
+
+  const close = useCallback(() => {
+    setOpen(false);
+    window.history.replaceState(null, "", "/new");
+  }, []);
+
+  if (!open || error !== "upload") return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      onClick={close}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl border border-rose-200 bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-center text-base font-medium text-rose-700">
+          上傳失敗，請稍後再試或改用「方式三」貼上 QR 網址入庫
+        </p>
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={close}
+            className="rounded-full bg-zinc-900 px-6 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+          >
+            蝣箏?
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 export function CollapsibleSection({
   title,
@@ -89,7 +128,7 @@ export function CollapsibleSection({
         className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-zinc-700"
       >
         {title}
-        <span className="text-zinc-400">{open ? "▲" : "▼"}</span>
+        <span className="text-zinc-400">{open ? "▼" : "▶"}</span>
       </button>
       {open && (
         <div className="overflow-visible border-t border-zinc-100 px-4 pb-4 pt-2">
