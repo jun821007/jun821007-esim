@@ -2,7 +2,9 @@ import bcrypt from "bcryptjs";
 import {
   createStore,
   findStoreBySlug,
+  findStoreById,
   listStores,
+  updateStorePassword,
   type StoreRow,
 } from "@/lib/db";
 import { getSession } from "@/lib/session";
@@ -24,10 +26,19 @@ export async function verifyStore(slug: string, password: string): Promise<Store
 
 export async function createStoreAccount(name: string, slug: string, password: string): Promise<{ ok: boolean; error?: string }> {
   const s = slug.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  if (!s) return { ok: false, error: "帳號代碼格式不符" };
-  if (findStoreBySlug(s)) return { ok: false, error: "此帳號已存在" };
+  if (!s) return { ok: false, error: "撣唾?隞?Ⅳ?澆?銝泵" };
+  if (findStoreBySlug(s)) return { ok: false, error: "甇文董?歇摮" };
   const hash = await bcrypt.hash(password, 10);
   createStore({ name, slug: s, passwordHash: hash });
+  return { ok: true };
+}
+
+export async function changeStorePassword(storeId: number, newPassword: string): Promise<{ ok: boolean; error?: string }> {
+  const store = findStoreById(storeId);
+  if (!store) return { ok: false, error: "店家不存在" };
+  if (!newPassword || newPassword.length < 6) return { ok: false, error: "密碼至少 6 個字元" };
+  const hash = await bcrypt.hash(newPassword, 10);
+  updateStorePassword(storeId, hash);
   return { ok: true };
 }
 

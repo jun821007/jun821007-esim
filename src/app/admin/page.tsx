@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { listStores } from "@/lib/db";
 import { createStoreAccount } from "@/lib/auth";
 import { getSession } from "@/lib/session";
@@ -37,10 +38,9 @@ export default async function AdminPage() {
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              管理者後台
-            </h1>
+              蝞∠?????            </h1>
             <p className="mt-1 text-sm text-zinc-500">
-              開新店家帳號
+              ?摨振撣唾?
             </p>
           </div>
           <form action="/api/auth/logout?next=/admin/login" method="POST">
@@ -48,33 +48,41 @@ export default async function AdminPage() {
               type="submit"
               className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
             >
-              登出
+              ?餃
             </button>
           </form>
         </header>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-medium text-zinc-800">開新店家帳號</h2>
+          <h2 className="text-sm font-medium text-zinc-800">?摨振撣唾?</h2>
           <AdminCreateStoreForm action={createStoreAction} />
         </section>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-sm font-medium text-zinc-800">
-            已開店家（共 {stores.length} 間）
+            撌脤?摨振嚗 {stores.length} ??
           </h2>
           {stores.length === 0 ? (
-            <p className="text-sm text-zinc-500">尚無店家帳號</p>
+            <p className="text-sm text-zinc-500">撠摨振撣唾?</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {stores.map((s) => (
                 <li
                   key={s.id}
-                  className="flex items-center justify-between rounded-lg border border-zinc-100 px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-lg border border-zinc-100 px-3 py-2"
                 >
                   <span className="font-medium text-zinc-800">{s.name}</span>
-                  <code className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
-                    {s.slug}
-                  </code>
+                  <div className="flex items-center gap-2">
+                    <code className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
+                      {s.slug}
+                    </code>
+                    <Link
+                      href={`/admin/stores/${s.id}/change-password`}
+                      className="text-xs text-zinc-500 underline hover:text-zinc-700"
+                    >
+                      更改密碼
+                    </Link>
+                  </div>
                 </li>
               ))}
             </ul>

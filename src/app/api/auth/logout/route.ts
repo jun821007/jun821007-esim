@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   const session = await getSession();
   session.destroy();
   const url = new URL(request.url);
-  const base = `${url.protocol}//${url.host}`;
   const next = url.searchParams.get("next") || "/login";
-  return NextResponse.redirect(`${base}${next.startsWith("/") ? next : `/${next}`}`);
+  const path = next.startsWith("/") ? next : `/${next}`;
+  return NextResponse.redirect(path);
 }

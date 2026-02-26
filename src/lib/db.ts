@@ -122,6 +122,20 @@ export function findStoreBySlug(slug: string): StoreRow | undefined {
   return stmt.get(slug);
 }
 
+export function findStoreById(id: number): StoreRow | undefined {
+  const stmt = db.prepare<[number], StoreRow>(
+    `SELECT * FROM "Store" WHERE "id" = ?`,
+  );
+  return stmt.get(id);
+}
+
+export function updateStorePassword(storeId: number, passwordHash: string): void {
+  const stmt = db.prepare(
+    `UPDATE "Store" SET "passwordHash" = ? WHERE "id" = ?`,
+  );
+  stmt.run(passwordHash, storeId);
+}
+
 export function listEsims(storeId: number): EsimRow[] {
   const stmt = db.prepare<unknown[], EsimRow>(
     `SELECT * FROM "Esim" WHERE ("storeId" = ? OR ("storeId" IS NULL AND ? = 1))
