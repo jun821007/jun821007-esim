@@ -12,8 +12,9 @@ export async function GET(
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
-  const baseDir =
-    process.env.DATABASE_PATH && path.isAbsolute(process.env.DATABASE_PATH)
+  const baseDir = process.env.UPLOAD_PATH
+    ? path.resolve(process.env.UPLOAD_PATH)
+    : process.env.DATABASE_PATH && path.isAbsolute(process.env.DATABASE_PATH)
       ? path.dirname(process.env.DATABASE_PATH)
       : path.join(process.cwd(), "public");
   const filePath = path.join(baseDir, "qr", fileName);

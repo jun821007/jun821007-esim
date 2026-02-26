@@ -2,7 +2,66 @@
 
 import { useFormStatus } from "react-dom";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+export function QrFileInputWithPreview() {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [previews, setPreviews] = useState<string[]>([]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) {
+      setPreviews([]);
+      return;
+    }
+    const urls = Array.from(files)
+      .filter((f) => f.type.startsWith("image/"))
+      .slice(0, 20)
+      .map((f) => URL.createObjectURL(f));
+    setPreviews((prev) => {
+      prev.forEach((u) => URL.revokeObjectURL(u));
+      return urls;
+    });
+  }, []);
+
+  useEffect(
+    () => () => {
+      previews.forEach((u) => URL.revokeObjectURL(u));
+    },
+    [previews]
+  );
+
+  return (
+    <div className="space-y-2">
+      <label className="block cursor-pointer rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-3 py-6 text-center text-xs text-zinc-500 hover:border-zinc-400 hover:bg-zinc-100">
+        <input
+          ref={inputRef}
+          name="qrFiles"
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleChange}
+          className="hidden"
+        />
+        {previews.length > 0
+          ? `已選 ${previews.length} 張，點此更換`
+          : "點此選擇 QR 圖片"}
+      </label>
+      {previews.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {previews.map((url, i) => (
+            <img
+              key={url}
+              src={url}
+              alt=""
+              className="h-14 w-14 rounded-lg border border-zinc-200 object-cover"
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function QrUploadSubmitButton() {
   const { pending } = useFormStatus();
@@ -33,7 +92,7 @@ export function QrUploadSubmitButton() {
 
 export function UploadedModal() {
   const searchParams = useSearchParams();
-  const uploaded = searchParams.get("uploaded");
+  const uploaded = searchParams?.get?.("uploaded") ?? null;
   const count = uploaded ? Number(uploaded) : 0;
   const [open, setOpen] = useState(count > 0);
 
@@ -72,7 +131,7 @@ export function UploadedModal() {
 
 export function UploadErrorModal() {
   const searchParams = useSearchParams();
-  const error = searchParams.get("error");
+  const error = searchParams?.get?.("error") ?? null;
   const [open, setOpen] = useState(error === "upload");
 
   const close = useCallback(() => {

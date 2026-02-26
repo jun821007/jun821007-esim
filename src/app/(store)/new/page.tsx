@@ -2,10 +2,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { createEsimRow, findEsimsByIds } from "@/lib/db";
 import { getSession } from "@/lib/session";
-import { CollapsibleSection, QrUploadSubmitButton, UploadedModal, UploadErrorModal } from "./NewPageClient";
+import { CollapsibleSection, QrFileInputWithPreview, QrUploadSubmitButton, UploadedModal, UploadErrorModal } from "./NewPageClient";
 
 export const dynamic = "force-dynamic";
 
@@ -46,13 +47,15 @@ async function createFromFiles(formData: FormData) {
 
   const files = formData.getAll("qrFiles") as File[];
 
-  const uploadBase =
-    process.env.DATABASE_PATH && path.isAbsolute(process.env.DATABASE_PATH)
+  const uploadBase = process.env.UPLOAD_PATH
+    ? path.resolve(process.env.UPLOAD_PATH)
+    : process.env.DATABASE_PATH && path.isAbsolute(process.env.DATABASE_PATH)
       ? path.dirname(process.env.DATABASE_PATH)
       : path.join(process.cwd(), "public");
   const uploadDir = path.join(uploadBase, "qr");
   const useApiRoute = Boolean(
-    process.env.DATABASE_PATH && path.isAbsolute(process.env.DATABASE_PATH)
+    process.env.UPLOAD_PATH ||
+      (process.env.DATABASE_PATH && path.isAbsolute(process.env.DATABASE_PATH))
   );
   await fs.mkdir(uploadDir, { recursive: true });
 
@@ -100,8 +103,9 @@ async function createFromFiles(formData: FormData) {
 
   revalidatePath("/");
   redirect(`/new?uploaded=${count}`);
-  } catch {
-    redirect("/new?error=upload");
+  } catch (e) {
+    if (e && typeof e === "object" && "digest" in e && String(e.digest).startsWith("NEXT_REDIRECT")) throw e;
+    return { error: "upload" };
   }
 }
 
@@ -256,13 +260,7 @@ export default async function NewPage() {
                 <label className="block text-xs font-medium text-zinc-600">
                   QR 圖片（可多選）
                 </label>
-                <input
-                  name="qrFiles"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="block w-full cursor-pointer rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-3 py-6 text-xs text-zinc-500 file:hidden hover:border-zinc-400"
-                />
+                <QrFileInputWithPreview />
                 <p className="text-[10px] text-zinc-400">
                   一次選多張 QR 圖，系統會依照上面的方案資訊自動建立多筆 eSIM。
                 </p>
