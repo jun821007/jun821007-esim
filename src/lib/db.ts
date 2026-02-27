@@ -1,4 +1,6 @@
 import Database from "better-sqlite3";
+import nodeFs from "node:fs";
+import nodePath from "node:path";
 
 export type EsimStatus = "UNUSED" | "CUSTOMER" | "PEER" | "VOID";
 
@@ -39,9 +41,15 @@ const dbPath =
     : undefined) ||
   "dev.db";
 
+const _resolvedDbPath = nodePath.resolve(dbPath);
+const _dbDir = nodePath.dirname(_resolvedDbPath);
+if (!nodeFs.existsSync(_dbDir)) {
+  nodeFs.mkdirSync(_dbDir, { recursive: true });
+}
+
 const db =
   globalForDb.esimDb ??
-  new Database(dbPath, {
+  new Database(_resolvedDbPath, {
     fileMustExist: false,
   });
 

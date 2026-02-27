@@ -104,8 +104,8 @@ async function createFromFiles(formData: FormData) {
   revalidatePath("/");
   redirect(`/new?uploaded=${count}`);
   } catch (e) {
-    if (e && typeof e === "object" && "digest" in e && String(e.digest).startsWith("NEXT_REDIRECT")) throw e;
-    return { error: "upload" };
+    if (e && typeof e === "object" && "digest" in e && String((e as { digest?: unknown }).digest).startsWith("NEXT_REDIRECT")) throw e;
+    redirect("/new?error=upload");
   }
 }
 
