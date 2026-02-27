@@ -67,14 +67,18 @@ export default function InventoryTable({
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   // Auto-clear selection after server revalidation (inStock ids change)
+  // Only close modal if still on step 1 (step 2 = user is copying share URL)
   const inStockKey = inStock.map(e => e.id).join(",");
   const prevKeyRef = useRef(inStockKey);
   useEffect(() => {
     if (inStockKey !== prevKeyRef.current) {
       prevKeyRef.current = inStockKey;
       setSelectedIds(new Set());
-      setMarkModalOpen(false);
-      setMarkModalStep(1);
+      // Only auto-close if user hasn't reached step 2 (share URL screen)
+      setMarkModalStep((prev) => {
+        if (prev === 1) setMarkModalOpen(false);
+        return 1;
+      });
     }
   }, [inStockKey]);
 
