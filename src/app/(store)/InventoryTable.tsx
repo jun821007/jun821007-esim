@@ -74,15 +74,20 @@ function EsimOutForm({
   const handleShip = () => {
     if (!formRef.current) return;
     const fd = new FormData(formRef.current);
+    // Copy URL synchronously inside user gesture before any async work
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const u = `${origin}/share?ids=${esim.id}`;
+    // Use clipboard API directly in user gesture context
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(u).catch(() => {});
+    } else {
+      copyToClipboard(u);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    // Then submit to server in background
     startTransition(async () => {
       await updateEsim(fd);
-      const u =
-        typeof window !== "undefined"
-          ? `${window.location.origin}/share?ids=${esim.id}`
-          : `/share?ids=${esim.id}`;
-      await copyToClipboard(u);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     });
   };
 
