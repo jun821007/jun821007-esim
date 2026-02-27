@@ -119,6 +119,7 @@ export default function InventoryTable({
   const [pendingStatus, setPendingStatus] = useState<"CUSTOMER" | "PEER">("CUSTOMER");
   const [pendingCustomerName, setPendingCustomerName] = useState("");
   const [copySuccess, setCopySuccess] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const toggleExpand = (id: number) => {
     setExpandedIds((prev) => {
@@ -381,37 +382,6 @@ export default function InventoryTable({
                       <div className="mt-0.5 text-[11px] text-zinc-500">
                         {esim.planName || "—"}
                       </div>
-                      <div className="mt-0.5 text-[10px] text-zinc-400">
-                        {esim.qrPath && (
-                          <span className="ml-1">
-                            ·{" "}
-                            <a
-                              href={esim.qrPath}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="underline"
-                            >
-                              看 QR
-                            </a>
-                          </span>
-                        )}
-                        <span className="ml-1">
-                          ·{" "}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const u =
-                                typeof window !== "undefined"
-                                  ? `${window.location.origin}/share?ids=${esim.id}`
-                                  : `/share?ids=${esim.id}`;
-                              copyToClipboard(u);
-                            }}
-                            className="text-[10px] text-zinc-600 underline"
-                          >
-                            複製網址
-                          </button>
-                        </span>
-                      </div>
                     </td>
                     <td className="px-3 py-3">
                       <span
@@ -469,9 +439,23 @@ export default function InventoryTable({
                         <div className="flex justify-end gap-2">
                           <button
                             type="submit"
-                            className="inline-flex items-center rounded-full bg-zinc-900 px-3 py-1 text-[11px] font-medium text-white transition hover:bg-zinc-800 active:bg-zinc-950"
+                            onClick={(e) => {
+                              const form = e.currentTarget.closest("form") as HTMLFormElement;
+                              e.preventDefault();
+                              const fd = new FormData(form);
+                              updateEsim(fd).then(() => {
+                                const u = typeof window !== "undefined"
+                                  ? `${window.location.origin}/share?ids=${esim.id}`
+                                  : `/share?ids=${esim.id}`;
+                                copyToClipboard(u).then(() => {
+                                  setCopiedId(esim.id);
+                                  setTimeout(() => setCopiedId(null), 2000);
+                                });
+                              });
+                            }}
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium text-white transition active:bg-zinc-950 ${copiedId === esim.id ? "bg-emerald-600 hover:bg-emerald-500" : "bg-zinc-900 hover:bg-zinc-800"}`}
                           >
-                            儲存
+                            {copiedId === esim.id ? "✓ 已複製網址" : "改狀態 + 複製網址"}
                           </button>
                         </div>
                       </form>
@@ -538,31 +522,6 @@ export default function InventoryTable({
                     {statusLabel(esim.status)}
                   </span>
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-zinc-400">
-                  {esim.qrPath && (
-                    <a
-                      href={esim.qrPath}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline"
-                    >
-                      看 QR
-                    </a>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const u =
-                        typeof window !== "undefined"
-                          ? `${window.location.origin}/share?ids=${esim.id}`
-                          : `/share?ids=${esim.id}`;
-                      copyToClipboard(u);
-                    }}
-                    className="underline"
-                  >
-                    複製網址
-                  </button>
-                </div>
                 <button
                   type="button"
                   onClick={() => toggleExpand(esim.id)}
@@ -609,10 +568,24 @@ export default function InventoryTable({
                       </div>
                       <div className="mt-1 flex justify-end">
                         <button
-                          type="submit"
-                          className="inline-flex items-center rounded-full bg-zinc-900 px-3 py-1 text-[11px] font-medium text-white transition hover:bg-zinc-800 active:bg-zinc-950"
+                          type="button"
+                          onClick={() => {
+                            const form = document.querySelector(`form[data-esim-id="${esim.id}"]`) as HTMLFormElement;
+                            if (!form) return;
+                            const fd = new FormData(form);
+                            updateEsim(fd).then(() => {
+                              const u = typeof window !== "undefined"
+                                ? `${window.location.origin}/share?ids=${esim.id}`
+                                : `/share?ids=${esim.id}`;
+                              copyToClipboard(u).then(() => {
+                                setCopiedId(esim.id);
+                                setTimeout(() => setCopiedId(null), 2000);
+                              });
+                            });
+                          }}
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium text-white transition active:bg-zinc-950 ${copiedId === esim.id ? "bg-emerald-600 hover:bg-emerald-500" : "bg-zinc-900 hover:bg-zinc-800"}`}
                         >
-                          儲存
+                          {copiedId === esim.id ? "✓ 已複製網址" : "改狀態 + 複製網址"}
                         </button>
                       </div>
                     </form>
