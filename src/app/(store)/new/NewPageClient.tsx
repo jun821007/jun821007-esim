@@ -121,7 +121,7 @@ export function UploadedModal() {
             onClick={close}
             className="rounded-full bg-zinc-900 px-6 py-2 text-sm font-medium text-white hover:bg-zinc-800"
           >
-            蝣箏?
+            確定
           </button>
         </div>
       </div>
@@ -159,7 +159,7 @@ export function UploadErrorModal() {
             onClick={close}
             className="rounded-full bg-zinc-900 px-6 py-2 text-sm font-medium text-white hover:bg-zinc-800"
           >
-            蝣箏?
+            確定
           </button>
         </div>
       </div>
