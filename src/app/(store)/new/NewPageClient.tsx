@@ -90,6 +90,33 @@ export function QrUploadSubmitButton() {
   );
 }
 
+export function ShareLinkSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <>
+      {pending && (
+        <div className="h-1 w-full overflow-hidden rounded-full bg-zinc-200">
+          <div className="h-full w-full animate-pulse bg-sky-500" />
+        </div>
+      )}
+      <button
+        type="submit"
+        disabled={pending}
+        className="sticky bottom-4 z-10 inline-flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-lg border-0 bg-sky-700 px-4 py-3 text-base font-medium text-white shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70 active:bg-sky-800 disabled:hover:bg-sky-700"
+      >
+        {pending ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            入庫中，請勿重複按…
+          </>
+        ) : (
+          "批量入庫"
+        )}
+      </button>
+    </>
+  );
+}
+
 export function UploadedModal() {
   const searchParams = useSearchParams();
   const uploaded = searchParams?.get?.("uploaded") ?? null;
