@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { EsimRow, EsimStatus } from "@/lib/db";
 
 type InventoryTableProps = {
@@ -55,6 +55,118 @@ function statusClassName(status: string): string {
     default:
       return "bg-zinc-100 text-zinc-800";
   }
+}
+
+// ── 單張出庫表單（含 useTransition 正確 await server action）──
+function EsimOutForm({
+  esim,
+  updateEsim,
+  compact = false,
+}: {
+  esim: EsimRow;
+  updateEsim: (formData: FormData) => Promise<void>;
+  compact?: boolean;
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, startTransition] = useTransition();
+  const [copied, setCopied] = useState(false);
+
+  const handleShip = () => {
+    if (!formRef.current) return;
+    const fd = new FormData(formRef.current);
+    startTransition(async () => {
+      await updateEsim(fd);
+      const u =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/share?ids=${esim.id}`
+          : `/share?ids=${esim.id}`;
+      await copyToClipboard(u);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const btnCls = `inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium text-white transition active:bg-zinc-950 ${
+    copied
+      ? "bg-emerald-600 hover:bg-emerald-500"
+      : isPending
+        ? "cursor-not-allowed bg-zinc-400"
+        : "bg-zinc-900 hover:bg-zinc-800"
+  }`;
+
+  if (compact) {
+    // 桌機 table 版
+    return (
+      <form ref={formRef} className="flex flex-col gap-1.5">
+        <input type="hidden" name="id" value={esim.id} />
+        <div className="flex flex-wrap gap-1.5">
+          <select
+            name="status"
+            defaultValue={esim.status as EsimStatus}
+            className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
+          >
+            <option value="UNUSED">未使用</option>
+            <option value="CUSTOMER">已給客人</option>
+            <option value="PEER">已給同行</option>
+            <option value="VOID">作廢</option>
+          </select>
+          <input
+            name="customerName"
+            defaultValue={esim.customerName ?? ""}
+            placeholder="客戶姓名"
+            className="min-w-[100px] flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
+          />
+        </div>
+        <input
+          name="notes"
+          defaultValue={esim.notes ?? ""}
+          placeholder="這一張的額外備註（選填）"
+          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
+        />
+        <div className="flex justify-end gap-2">
+          <button type="button" disabled={isPending} onClick={handleShip} className={btnCls}>
+            {copied ? "✓ 已複製" : isPending ? "處理中…" : "出庫"}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  // 手機卡片版
+  return (
+    <form ref={formRef} className="flex flex-col gap-1.5">
+      <input type="hidden" name="id" value={esim.id} />
+      <div className="flex flex-wrap gap-1.5">
+        <select
+          name="status"
+          defaultValue={esim.status as EsimStatus}
+          className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
+        >
+          <option value="UNUSED">未使用</option>
+          <option value="CUSTOMER">已給客人</option>
+          <option value="PEER">已給同行</option>
+          <option value="VOID">作廢</option>
+        </select>
+        <input
+          name="customerName"
+          defaultValue={esim.customerName ?? ""}
+          placeholder="客戶姓名"
+          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
+        />
+        <input
+          name="notes"
+          defaultValue={esim.notes ?? ""}
+          placeholder="這一張的額外備註（選填）"
+          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
+        />
+      </div>
+      <div className="mt-1 flex justify-end">
+        <button type="button" disabled={isPending} onClick={handleShip} className={btnCls}>
+          {copied ? "✓ 已複製" : isPending ? "處理中…" : "出庫"}
+        </button>
+      </div>
+    </form>
+  );
 }
 
 export default function InventoryTable({
@@ -119,7 +231,6 @@ export default function InventoryTable({
   const [pendingStatus, setPendingStatus] = useState<"CUSTOMER" | "PEER">("CUSTOMER");
   const [pendingCustomerName, setPendingCustomerName] = useState("");
   const [copySuccess, setCopySuccess] = useState(false);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const toggleExpand = (id: number) => {
     setExpandedIds((prev) => {
@@ -236,7 +347,6 @@ export default function InventoryTable({
                         <button
                           type="submit"
                           onClick={() => {
-                            // 延後切換 step，讓 form 先完成 submit 序列化
                             requestAnimationFrame(() =>
                               setMarkModalStep(2)
                             );
@@ -342,7 +452,7 @@ export default function InventoryTable({
           </form>
         </div>
 
-        {/* 桌機：表格檢視（手機、平板用下方卡片） */}
+        {/* 桌機：表格檢視 */}
         <div className="hidden overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm md:block">
           <div className="max-h-[560px] overflow-auto">
             <table className="min-w-full text-left text-xs">
@@ -398,58 +508,7 @@ export default function InventoryTable({
                       </div>
                     </td>
                     <td className="px-3 py-3">
-                      <form
-                        action={updateEsim}
-                        className="flex flex-col gap-1.5"
-                      >
-                        <input type="hidden" name="id" value={esim.id} />
-                        <div className="flex flex-wrap gap-1.5">
-                          <select
-                            name="status"
-                            defaultValue={esim.status as EsimStatus}
-                            className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
-                          >
-                            <option value="UNUSED">未使用</option>
-                            <option value="CUSTOMER">已給客人</option>
-                            <option value="PEER">已給同行</option>
-                            <option value="VOID">作廢</option>
-                          </select>
-                          <input
-                            name="customerName"
-                            defaultValue={esim.customerName ?? ""}
-                            placeholder="客戶姓名"
-                            className="min-w-[100px] flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
-                          />
-                        </div>
-                        <input
-                          name="notes"
-                          defaultValue={esim.notes ?? ""}
-                          placeholder="這一張的額外備註（選填）"
-                          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
-                        />
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="submit"
-                            onClick={(e) => {
-                              const form = e.currentTarget.closest("form") as HTMLFormElement;
-                              e.preventDefault();
-                              const fd = new FormData(form);
-                              updateEsim(fd).then(() => {
-                                const u = typeof window !== "undefined"
-                                  ? `${window.location.origin}/share?ids=${esim.id}`
-                                  : `/share?ids=${esim.id}`;
-                                copyToClipboard(u).then(() => {
-                                  setCopiedId(esim.id);
-                                  setTimeout(() => setCopiedId(null), 2000);
-                                });
-                              });
-                            }}
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium text-white transition active:bg-zinc-950 ${copiedId === esim.id ? "bg-emerald-600 hover:bg-emerald-500" : "bg-zinc-900 hover:bg-zinc-800"}`}
-                          >
-                            {copiedId === esim.id ? "✓ 已複製網址" : "改狀態 + 複製網址"}
-                          </button>
-                        </div>
-                      </form>
+                      <EsimOutForm esim={esim} updateEsim={updateEsim} compact />
                     </td>
                   </tr>
                 ))}
@@ -468,7 +527,7 @@ export default function InventoryTable({
           </div>
         </div>
 
-        {/* 手機、平板：收折卡片檢視（含批量勾選） */}
+        {/* 手機、平板：收折卡片檢視 */}
         <div className="space-y-2 md:hidden">
           {inStock.length > 0 && (
             <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2">
@@ -522,58 +581,7 @@ export default function InventoryTable({
                 </button>
                 {expanded && (
                   <div className="mt-2 border-t border-zinc-100 pt-2">
-                    <form
-                      action={updateEsim}
-                      className="flex flex-col gap-1.5"
-                    >
-                      <input type="hidden" name="id" value={esim.id} />
-                      <div className="flex flex-wrap gap-1.5">
-                        <select
-                          name="status"
-                          defaultValue={esim.status as EsimStatus}
-                          className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
-                        >
-                          <option value="UNUSED">未使用</option>
-                          <option value="CUSTOMER">已給客人</option>
-                          <option value="PEER">已給同行</option>
-                          <option value="VOID">作廢</option>
-                        </select>
-                        <input
-                          name="customerName"
-                          defaultValue={esim.customerName ?? ""}
-                          placeholder="客戶姓名"
-                          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
-                        />
-                        <input
-                          name="notes"
-                          defaultValue={esim.notes ?? ""}
-                          placeholder="這一張的額外備註（選填）"
-                          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
-                        />
-                      </div>
-                      <div className="mt-1 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const form = document.querySelector(`form[data-esim-id="${esim.id}"]`) as HTMLFormElement;
-                            if (!form) return;
-                            const fd = new FormData(form);
-                            updateEsim(fd).then(() => {
-                              const u = typeof window !== "undefined"
-                                ? `${window.location.origin}/share?ids=${esim.id}`
-                                : `/share?ids=${esim.id}`;
-                              copyToClipboard(u).then(() => {
-                                setCopiedId(esim.id);
-                                setTimeout(() => setCopiedId(null), 2000);
-                              });
-                            });
-                          }}
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium text-white transition active:bg-zinc-950 ${copiedId === esim.id ? "bg-emerald-600 hover:bg-emerald-500" : "bg-zinc-900 hover:bg-zinc-800"}`}
-                        >
-                          {copiedId === esim.id ? "✓ 已複製網址" : "改狀態 + 複製網址"}
-                        </button>
-                      </div>
-                    </form>
+                    <EsimOutForm esim={esim} updateEsim={updateEsim} />
                   </div>
                 )}
               </div>
@@ -589,4 +597,3 @@ export default function InventoryTable({
     </div>
   );
 }
-
