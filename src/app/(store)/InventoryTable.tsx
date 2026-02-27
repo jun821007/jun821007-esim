@@ -148,6 +148,7 @@ export default function InventoryTable({
                 setMarkModalStep(1);
                 setPendingStatus("CUSTOMER");
                 setPendingCustomerName("");
+                setSelectedIds(new Set());
                 setCopySuccess(false);
               }}
             >
@@ -222,6 +223,7 @@ export default function InventoryTable({
                             setMarkModalStep(1);
                             setPendingStatus("CUSTOMER");
                             setPendingCustomerName("");
+                            setSelectedIds(new Set());
                             setCopySuccess(false);
                           }}
                           className="flex-1 rounded-full border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-700"
@@ -291,6 +293,7 @@ export default function InventoryTable({
                           setMarkModalStep(1);
                           setPendingStatus("CUSTOMER");
                           setPendingCustomerName("");
+                          setSelectedIds(new Set());
                         }}
                         className="w-full rounded-full border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
                       >
