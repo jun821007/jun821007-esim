@@ -102,7 +102,7 @@ export function ShareLinkSubmitButton() {
       <button
         type="submit"
         disabled={pending}
-        className="sticky bottom-4 z-10 inline-flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-lg border-0 bg-sky-700 px-4 py-3 text-base font-medium text-white shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70 active:bg-sky-800 disabled:hover:bg-sky-700"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-70 hover:bg-zinc-800 active:bg-zinc-950 disabled:hover:bg-zinc-900"
       >
         {pending ? (
           <>

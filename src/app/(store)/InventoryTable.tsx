@@ -396,9 +396,6 @@ export default function InventoryTable({
                       <div className="text-xs text-zinc-800">
                         {esim.customerName || "—"}
                       </div>
-                      <div className="mt-0.5 text-[10px] text-zinc-400">
-                        {esim.customerContact || ""}
-                      </div>
                     </td>
                     <td className="px-3 py-3">
                       <form
@@ -422,12 +419,6 @@ export default function InventoryTable({
                             defaultValue={esim.customerName ?? ""}
                             placeholder="客戶姓名"
                             className="min-w-[100px] flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
-                          />
-                          <input
-                            name="customerContact"
-                            defaultValue={esim.customerContact ?? ""}
-                            placeholder="聯絡方式"
-                            className="min-w-[120px] flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
                           />
                         </div>
                         <input
@@ -551,12 +542,6 @@ export default function InventoryTable({
                           name="customerName"
                           defaultValue={esim.customerName ?? ""}
                           placeholder="客戶姓名"
-                          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
-                        />
-                        <input
-                          name="customerContact"
-                          defaultValue={esim.customerContact ?? ""}
-                          placeholder="聯絡方式"
                           className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] outline-none focus:border-zinc-400"
                         />
                         <input
