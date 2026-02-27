@@ -66,6 +66,18 @@ export default function InventoryTable({
 }: InventoryTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
+  // Auto-clear selection after server revalidation (inStock ids change)
+  const inStockKey = inStock.map(e => e.id).join(",");
+  const prevKeyRef = useRef(inStockKey);
+  useEffect(() => {
+    if (inStockKey !== prevKeyRef.current) {
+      prevKeyRef.current = inStockKey;
+      setSelectedIds(new Set());
+      setMarkModalOpen(false);
+      setMarkModalStep(1);
+    }
+  }, [inStockKey]);
+
   const allSelected = useMemo(
     () => inStock.length > 0 && selectedIds.size === inStock.length,
     [inStock.length, selectedIds],
