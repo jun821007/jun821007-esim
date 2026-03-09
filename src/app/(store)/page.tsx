@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+﻿import { revalidatePath } from "next/cache";
 import {
   deleteEsimRow,
   listEsims,
@@ -96,7 +96,7 @@ export default async function Home() {
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              eSIM 庫存現貨 <span className="text-base font-normal text-zinc-500">歡迎您！{session.storeName}</span>
+              eSIM 庫存現貨 <span className="text-sm font-normal text-zinc-500">歡迎您！{session.storeName}</span>
             </h1>
             <p className="mt-1 text-sm text-zinc-500">
               這裡只顯示「未使用」的 eSIM，方便你快速出貨與批量操作；其他狀態會進到歷史流水。
