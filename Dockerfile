@@ -10,7 +10,7 @@ COPY . .
 
 RUN npx prisma generate
 
-RUN npm run build
+RUN SKIP_DATABASE_INIT=1 npm run build
 
 EXPOSE 3000
 

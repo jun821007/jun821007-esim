@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+﻿import Database from "better-sqlite3";
 import nodeFs from "node:fs";
 import nodePath from "node:path";
 
@@ -34,23 +34,32 @@ const globalForDb = globalThis as unknown as {
   esimDb?: Database.Database;
 };
 
-const dbPath =
-  process.env.DATABASE_PATH ||
-  (process.env.DATABASE_URL?.startsWith("file:")
-    ? process.env.DATABASE_URL.replace(/^file:/, "")
-    : undefined) ||
-  "dev.db";
+const useInMemory =
+  process.env.SKIP_DATABASE_INIT === "1" ||
+  process.env.NEXT_PHASE === "phase-production-build";
 
-const _resolvedDbPath = nodePath.resolve(dbPath);
-const _dbDir = nodePath.dirname(_resolvedDbPath);
-if (!nodeFs.existsSync(_dbDir)) {
-  nodeFs.mkdirSync(_dbDir, { recursive: true });
+const dbPath = useInMemory
+  ? ":memory:"
+  : process.env.DATABASE_PATH ||
+    (process.env.DATABASE_URL?.startsWith("file:")
+      ? process.env.DATABASE_URL.replace(/^file:/, "")
+      : undefined) ||
+    "dev.db";
+
+const _resolvedDbPath =
+  dbPath === ":memory:" ? ":memory:" : nodePath.resolve(dbPath);
+if (dbPath !== ":memory:") {
+  const _dbDir = nodePath.dirname(_resolvedDbPath);
+  if (!nodeFs.existsSync(_dbDir)) {
+    nodeFs.mkdirSync(_dbDir, { recursive: true });
+  }
 }
 
 const db =
   globalForDb.esimDb ??
   new Database(_resolvedDbPath, {
     fileMustExist: false,
+    timeout: useInMemory ? 0 : 5000,
   });
 
 if (!globalForDb.esimDb) {
