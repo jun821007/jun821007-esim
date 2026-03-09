@@ -131,6 +131,7 @@ export default function InventoryTable({
   const [markModalOpen, setMarkModalOpen] = useState(false);
   const [markModalStep, setMarkModalStep] = useState<1 | 2>(1);
   const deleteFormRef = useRef<HTMLFormElement>(null);
+  const bulkFormRef = useRef<HTMLFormElement>(null);
   const [pendingStatus, setPendingStatus] = useState<"CUSTOMER" | "PEER" | "VOID">("CUSTOMER");
   const [pendingCustomerName, setPendingCustomerName] = useState("");
   const [copySuccess, setCopySuccess] = useState(false);
@@ -172,7 +173,7 @@ export default function InventoryTable({
                 className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <form action={bulkUpdateStatus} className="space-y-4">
+                <form ref={bulkFormRef} action={bulkUpdateStatus} className="space-y-4">
                   <input type="hidden" name="ids" value={selectedIdsValue} />
                   <input type="hidden" name="status" value={pendingStatus} />
                   <input
@@ -247,11 +248,12 @@ export default function InventoryTable({
                           取消
                         </button>
                         <button
-                          type="submit"
-                          onClick={() => {
-                            requestAnimationFrame(() =>
-                              setMarkModalStep(2)
-                            );
+                          type="button"
+                          onClick={async () => {
+                            if (!bulkFormRef.current) return;
+                            setMarkModalStep(2);
+                            const fd = new FormData(bulkFormRef.current);
+                            await bulkUpdateStatus(fd);
                           }}
                           className="flex-1 rounded-full bg-zinc-900 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-800"
                         >
