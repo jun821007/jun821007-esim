@@ -1,11 +1,10 @@
-import { revalidatePath } from "next/cache";
+﻿import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { deleteStore, listStores } from "@/lib/db";
 import { createStoreAccount } from "@/lib/auth";
 import { getSession } from "@/lib/session";
 import AdminCreateStoreForm from "./AdminCreateStoreForm";
-import AdminDeleteStoreButton from "./AdminDeleteStoreButton";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +24,13 @@ async function createStoreAction(
   return result;
 }
 
-async function deleteStoreAction(storeId: number) {
+async function deleteStoreAction(formData: FormData) {
   "use server";
-  deleteStore(storeId);
-  revalidatePath("/admin");
+  const id = formData.get("storeId");
+  if (id) {
+    deleteStore(Number(id));
+    revalidatePath("/admin");
+  }
 }
 
 export default async function AdminPage() {
@@ -80,7 +82,7 @@ export default async function AdminPage() {
                   className="flex items-center justify-between gap-2 rounded-lg border border-zinc-100 px-3 py-2"
                 >
                   <span className="font-medium text-zinc-800">{s.name}</span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <code className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
                       {s.slug}
                     </code>
@@ -90,7 +92,12 @@ export default async function AdminPage() {
                     >
                       更改密碼
                     </Link>
-                    <AdminDeleteStoreButton storeId={s.id} storeName={s.name} onDelete={deleteStoreAction} />
+                    <form action={deleteStoreAction} className="inline">
+                      <input type="hidden" name="storeId" value={s.id} />
+                      <button type="submit" className="rounded border border-rose-300 bg-white px-2 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50">
+                        刪除帳號
+                      </button>
+                    </form>
                   </div>
                 </li>
               ))}
