@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EsimRow, EsimStatus } from "@/lib/db";
@@ -70,15 +70,15 @@ export default function InventoryTable({
   // Only close modal if still on step 1 (step 2 = user is copying share URL)
   const inStockKey = inStock.map(e => e.id).join(",");
   const prevKeyRef = useRef(inStockKey);
+  const pendingStep2Ref = useRef(false);
   useEffect(() => {
     if (inStockKey !== prevKeyRef.current) {
       prevKeyRef.current = inStockKey;
-      setSelectedIds(new Set());
-      // Only auto-close if user hasn't reached step 2 (share URL screen)
-      setMarkModalStep((prev) => {
-        if (prev === 1) setMarkModalOpen(false);
-        return 1;
-      });
+      if (!pendingStep2Ref.current) {
+        setSelectedIds(new Set());
+        setMarkModalOpen(false);
+        setMarkModalStep(1);
+      }
     }
   }, [inStockKey]);
 
@@ -161,6 +161,7 @@ export default function InventoryTable({
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
               onClick={() => {
+                pendingStep2Ref.current = false;
                 setMarkModalOpen(false);
                 setMarkModalStep(1);
                 setPendingStatus("CUSTOMER");
@@ -236,6 +237,7 @@ export default function InventoryTable({
                         <button
                           type="button"
                           onClick={() => {
+                            pendingStep2Ref.current = false;
                             setMarkModalOpen(false);
                             setMarkModalStep(1);
                             setPendingStatus("CUSTOMER");
@@ -251,6 +253,7 @@ export default function InventoryTable({
                           type="button"
                           onClick={async () => {
                             if (!bulkFormRef.current) return;
+                            pendingStep2Ref.current = true;
                             setMarkModalStep(2);
                             const fd = new FormData(bulkFormRef.current);
                             await bulkUpdateStatus(fd);
@@ -307,6 +310,7 @@ export default function InventoryTable({
                       <button
                         type="button"
                         onClick={() => {
+                          pendingStep2Ref.current = false;
                           setMarkModalOpen(false);
                           setMarkModalStep(1);
                           setPendingStatus("CUSTOMER");
