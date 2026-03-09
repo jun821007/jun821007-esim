@@ -1,10 +1,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { listStores } from "@/lib/db";
+import { deleteStore, listStores } from "@/lib/db";
 import { createStoreAccount } from "@/lib/auth";
 import { getSession } from "@/lib/session";
 import AdminCreateStoreForm from "./AdminCreateStoreForm";
+import AdminDeleteStoreButton from "./AdminDeleteStoreButton";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,12 @@ async function createStoreAction(
   const result = await createStoreAccount(name, slug, password);
   if (result.ok) revalidatePath("/admin");
   return result;
+}
+
+async function deleteStoreAction(storeId: number) {
+  "use server";
+  deleteStore(storeId);
+  revalidatePath("/admin");
 }
 
 export default async function AdminPage() {
@@ -83,6 +90,7 @@ export default async function AdminPage() {
                     >
                       更改密碼
                     </Link>
+                    <AdminDeleteStoreButton storeId={s.id} storeName={s.name} onDelete={deleteStoreAction} />
                   </div>
                 </li>
               ))}

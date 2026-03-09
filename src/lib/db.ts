@@ -144,6 +144,19 @@ export function updateStorePassword(storeId: number, passwordHash: string): void
   stmt.run(passwordHash, storeId);
 }
 
+/** 刪除店家：先刪該店家的 eSIM 紀錄，再刪除店家帳號 */
+export function deleteStore(storeId: number): void {
+  db.exec("BEGIN TRANSACTION");
+  try {
+    db.prepare(`DELETE FROM "Esim" WHERE "storeId" = ?`).run(storeId);
+    db.prepare(`DELETE FROM "Store" WHERE "id" = ?`).run(storeId);
+    db.exec("COMMIT");
+  } catch {
+    db.exec("ROLLBACK");
+    throw new Error("刪除店家失敗");
+  }
+}
+
 export function listEsims(storeId: number): EsimRow[] {
   const stmt = db.prepare<unknown[], EsimRow>(
     `SELECT * FROM "Esim" WHERE ("storeId" = ? OR ("storeId" IS NULL AND ? = 1))
