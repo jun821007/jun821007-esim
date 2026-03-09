@@ -251,12 +251,9 @@ export default function InventoryTable({
                         </button>
                         <button
                           type="button"
-                          onClick={async () => {
-                            if (!bulkFormRef.current) return;
+                          onClick={() => {
                             pendingStep2Ref.current = true;
                             setMarkModalStep(2);
-                            const fd = new FormData(bulkFormRef.current);
-                            await bulkUpdateStatus(fd);
                           }}
                           className="flex-1 rounded-full bg-zinc-900 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-800"
                         >
@@ -309,7 +306,10 @@ export default function InventoryTable({
                       </div>
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={async () => {
+                          if (!bulkFormRef.current) return;
+                          const fd = new FormData(bulkFormRef.current);
+                          await bulkUpdateStatus(fd);
                           pendingStep2Ref.current = false;
                           setMarkModalOpen(false);
                           setMarkModalStep(1);
@@ -317,9 +317,9 @@ export default function InventoryTable({
                           setPendingCustomerName("");
                           setSelectedIds(new Set());
                         }}
-                        className="w-full rounded-full border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+                        className="mt-3 w-full rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
                       >
-                        關閉
+                        確定
                       </button>
                     </>
                   )}
