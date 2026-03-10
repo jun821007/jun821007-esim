@@ -135,6 +135,14 @@ export default function InventoryTable({
   const [pendingStatus, setPendingStatus] = useState<"CUSTOMER" | "PEER" | "VOID">("CUSTOMER");
   const [pendingCustomerName, setPendingCustomerName] = useState("");
   const [copySuccess, setCopySuccess] = useState(false);
+  const [previewQrEsim, setPreviewQrEsim] = useState<EsimRow | null>(null);
+
+  const qrImageSrc = (esim: EsimRow) =>
+    esim.qrPath?.startsWith("http")
+      ? esim.qrPath
+      : typeof window !== "undefined" && esim.qrPath
+        ? `${window.location.origin}${esim.qrPath}`
+        : "";
 
   return (
     <div className="space-y-8">
@@ -381,8 +389,12 @@ export default function InventoryTable({
               </thead>
               <tbody className="divide-y divide-zinc-100 text-[11px]">
                 {inStock.map((esim) => (
-                  <tr key={esim.id} className="align-top">
-                    <td className="px-3 py-3">
+                  <tr
+                    key={esim.id}
+                    className="align-top cursor-pointer hover:bg-zinc-50"
+                    onClick={() => esim.qrPath && setPreviewQrEsim(esim)}
+                  >
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(esim.id)}
@@ -444,11 +456,10 @@ export default function InventoryTable({
             return (
               <div
                 key={esim.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-3"
+                className="rounded-2xl border border-zinc-200 bg-white p-3 cursor-pointer hover:bg-zinc-50"
+                onClick={() => esim.qrPath && setPreviewQrEsim(esim)}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <input
+                <div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}><input
                       type="checkbox"
                       checked={selectedIds.has(esim.id)}
                       onChange={() => toggleSelect(esim.id)}
@@ -480,6 +491,39 @@ export default function InventoryTable({
           )}
         </div>
       </section>
+      {previewQrEsim && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          onClick={() => setPreviewQrEsim(null)}
+        >
+          <div
+            className="max-h-[90vh] max-w-lg rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-medium text-zinc-800">
+                {previewQrEsim.country || "—"} · {previewQrEsim.planName || "—"} (#{previewQrEsim.id})
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewQrEsim(null)}
+                className="rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+              >
+                ✕
+              </button>
+            </div>
+            {previewQrEsim.qrPath ? (
+              <img
+                src={qrImageSrc(previewQrEsim)}
+                alt="QR"
+                className="mx-auto max-h-[70vh] w-auto rounded-lg border border-zinc-200 object-contain"
+              />
+            ) : (
+              <p className="py-8 text-center text-sm text-zinc-500">無 QR 縮圖</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
