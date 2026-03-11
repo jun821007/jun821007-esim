@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { signShareUrl } from "@/lib/share";
 
@@ -12,7 +12,14 @@ export async function GET(request: NextRequest) {
   if (ids.length === 0) {
     return NextResponse.json({ error: "Invalid ids" }, { status: 400 });
   }
-  const origin = request.nextUrl.origin;
+  const origin =
+    process.env.APP_URL ||
+    (() => {
+      const proto = request.headers.get("x-forwarded-proto") || "https";
+      const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+      if (host && !host.startsWith("localhost")) return `${proto}://${host}`;
+      return request.nextUrl.origin;
+    })();
   const url = signShareUrl(ids, origin);
   return NextResponse.json({ url });
 }
