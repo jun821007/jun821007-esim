@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EsimRow, EsimStatus } from "@/lib/db";
@@ -114,19 +114,18 @@ export default function InventoryTable({
 
   const disabledBulk = selectedIds.size === 0;
 
-  const shareUrl =
-    selectedIds.size > 0
-      ? `/share?ids=${Array.from(selectedIds).join(",")}`
-      : "#";
-
   const [fullShareUrl, setFullShareUrl] = useState("");
   useEffect(() => {
-    if (typeof window !== "undefined" && selectedIds.size > 0) {
-      setFullShareUrl(`${window.location.origin}${shareUrl}`);
-    } else {
+    if (selectedIds.size === 0) {
       setFullShareUrl("");
+      return;
     }
-  }, [selectedIds, shareUrl]);
+    const ids = Array.from(selectedIds).join(",");
+    fetch(`/api/share/sign?ids=${ids}`)
+      .then((r) => r.json())
+      .then((data) => setFullShareUrl(data.url ?? ""))
+      .catch(() => setFullShareUrl(""));
+  }, [selectedIds]);
 
   const [markModalOpen, setMarkModalOpen] = useState(false);
   const [markModalStep, setMarkModalStep] = useState<1 | 2>(1);
@@ -276,16 +275,12 @@ export default function InventoryTable({
                       </p>
                       <div className="flex flex-wrap items-center gap-2 rounded-lg bg-zinc-50 px-3 py-2">
                         <span className="truncate text-xs text-zinc-700">
-                          {fullShareUrl || shareUrl}
+                          {fullShareUrl}
                         </span>
                         <button
                           type="button"
                           onClick={() => {
-                            const url =
-                              fullShareUrl ||
-                              (typeof window !== "undefined"
-                                ? `${window.location.origin}${shareUrl}`
-                                : shareUrl);
+                            const url = fullShareUrl;
                             copyToClipboard(url).then((ok) => {
                               if (ok) {
                                 setCopySuccess(true);
@@ -304,7 +299,7 @@ export default function InventoryTable({
                           {copySuccess ? "✓ 已複製" : "複製"}
                         </button>
                         <a
-                          href={shareUrl}
+                          href={fullShareUrl || "#"}
                           target="_blank"
                           rel="noreferrer"
                           className="rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
