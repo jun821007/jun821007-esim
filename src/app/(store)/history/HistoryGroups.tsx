@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { EsimRow } from "@/lib/db";
 import RevertButton from "./RevertButton";
 
@@ -102,11 +102,18 @@ function GroupSection({
 }) {
   const [open, setOpen] = useState(true);
   const [copySuccess, setCopySuccess] = useState(false);
-  const sharePath = `/share?ids=${ids}`;
-  const fullShareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}${sharePath}`
-      : sharePath;
+  const [fullShareUrl, setFullShareUrl] = useState("");
+
+  useEffect(() => {
+    if (!ids) {
+      setFullShareUrl("");
+      return;
+    }
+    fetch(`/api/share/sign?ids=${encodeURIComponent(ids)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("sign failed"))))
+      .then((data) => setFullShareUrl(data.url ?? ""))
+      .catch(() => setFullShareUrl(""));
+  }, [ids]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
@@ -121,11 +128,16 @@ function GroupSection({
           </span>
           {open && (
             <a
-              href={sharePath}
+              href={fullShareUrl || "#"}
               target="_blank"
               rel="noreferrer"
               className="rounded-full bg-sky-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-sky-700"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!fullShareUrl) {
+                  e.preventDefault();
+                }
+              }}
             >
               開啟分享連結
             </a>
@@ -140,6 +152,10 @@ function GroupSection({
               }`}
               onClick={(e) => {
                 e.stopPropagation();
+                if (!fullShareUrl) {
+                  window.alert("分享連結產生中，請稍後再試");
+                  return;
+                }
                 copyToClipboard(fullShareUrl).then((ok) => {
                   if (ok) {
                     setCopySuccess(true);
