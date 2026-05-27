@@ -24,6 +24,11 @@ function statusLabel(status: string): string {
   }
 }
 
+function formatTimestamp(value: string): string {
+  if (!value) return "—";
+  return value.replace("T", " ").replace(/\.\d+Z?$/, "");
+}
+
 function copyToClipboard(text: string): Promise<boolean> {
   if (typeof window === "undefined") return Promise.resolve(false);
   if (navigator.clipboard?.writeText) {
@@ -202,6 +207,9 @@ function GroupSection({
                       <span className="inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-700">
                         {statusLabel(esim.status)}
                       </span>
+                      <div className="mt-1 text-[10px] text-zinc-400">
+                        completedAt: {formatTimestamp(esim.updatedAt)}
+                      </div>
                     </td>
                     <td className="px-3 py-3 text-[11px] text-zinc-600">
                       {esim.notes || "—"}
