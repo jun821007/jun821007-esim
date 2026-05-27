@@ -57,6 +57,12 @@ function statusClassName(status: string): string {
   }
 }
 
+function formatInboundTime(value: string): string {
+  if (!value) return "—";
+  const normalized = value.replace("T", " ").replace(/\.\d+Z?$/, "");
+  return normalized;
+}
+
 export default function InventoryTable({
   inStock,
   history,
@@ -404,6 +410,9 @@ export default function InventoryTable({
                         {esim.country || "—"}
                       </div>
                       <div className="mt-0.5 text-[11px] text-zinc-500">
+                        入庫時間：{formatInboundTime(esim.createdAt)}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-zinc-500">
                         {esim.planName || "—"}
                       </div>
                     </td>
@@ -462,6 +471,9 @@ export default function InventoryTable({
                     <div>
                       <div className="text-xs font-semibold text-zinc-800">
                         {esim.country || "—"}
+                      </div>
+                      <div className="text-[11px] text-zinc-500">
+                        入庫時間：{formatInboundTime(esim.createdAt)}
                       </div>
                       <div className="text-[11px] text-zinc-500">
                         {esim.planName || "—"}
