@@ -3,6 +3,7 @@ import nodeFs from "node:fs";
 import nodePath from "node:path";
 
 export type EsimStatus = "UNUSED" | "CUSTOMER" | "PEER" | "VOID";
+export type ShareConsentDecision = "agree" | "decline";
 
 export type StoreRow = {
   id: number;
@@ -91,6 +92,16 @@ db.exec(`
     "qrPath" TEXT,
     "createdAt" TEXT NOT NULL DEFAULT (datetime('now')),
     "updatedAt" TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS "ShareConsentLog" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "idsText" TEXT NOT NULL,
+    "sig" TEXT NOT NULL,
+    "decision" TEXT NOT NULL,
+    "policyVersion" TEXT NOT NULL,
+    "ip" TEXT,
+    "userAgent" TEXT,
+    "createdAt" TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `);
 
@@ -291,4 +302,20 @@ export function findEsimsByIds(ids: number[], storeId?: number): EsimRow[] {
     ...ids,
     ...(storeId != null ? [storeId, storeId] : []),
   ) as EsimRow[];
+}
+
+export function createShareConsentLog(data: {
+  idsText: string;
+  sig: string;
+  decision: ShareConsentDecision;
+  policyVersion: string;
+  ip: string | null;
+  userAgent: string | null;
+}): void {
+  const stmt = db.prepare(
+    `INSERT INTO "ShareConsentLog"
+      ("idsText","sig","decision","policyVersion","ip","userAgent","createdAt")
+     VALUES (@idsText, @sig, @decision, @policyVersion, @ip, @userAgent, datetime('now'))`,
+  );
+  stmt.run(data);
 }
