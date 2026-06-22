@@ -1,5 +1,11 @@
 import { revalidatePath } from "next/cache";
-import { listEsims, updateManyWithCustomer, type EsimRow } from "@/lib/db";
+import Link from "next/link";
+import {
+  getLatestAgreedConsentByEsimIds,
+  listEsims,
+  updateManyWithCustomer,
+  type EsimRow,
+} from "@/lib/db";
 import { getSession } from "@/lib/session";
 import HistoryGroups from "./HistoryGroups";
 
@@ -22,6 +28,9 @@ export default async function HistoryPage() {
   const storeId = session.storeId ?? 1;
   const esims: EsimRow[] = listEsims(storeId);
   const history = esims.filter((e) => e.status !== "UNUSED");
+  const consentByEsimId = getLatestAgreedConsentByEsimIds(
+    history.map((e) => e.id),
+  );
 
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 font-sans text-zinc-900">
@@ -35,15 +44,19 @@ export default async function HistoryPage() {
               同一個人分組、可收折，可再次開啟或複製分享連結。
             </p>
           </div>
-          <a
+          <Link
             href="/"
             className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-700 hover:border-zinc-400"
           >
             回到庫存現貨
-          </a>
+          </Link>
         </header>
 
-        <HistoryGroups history={history} revertAction={revertToStockAction} />
+        <HistoryGroups
+          history={history}
+          consentByEsimId={consentByEsimId}
+          revertAction={revertToStockAction}
+        />
       </div>
     </div>
   );

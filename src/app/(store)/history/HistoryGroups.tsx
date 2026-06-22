@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { EsimRow } from "@/lib/db";
+import type { EsimRow, ShareConsentSummary } from "@/lib/db";
 import RevertButton from "./RevertButton";
 
 type HistoryGroupsProps = {
   history: EsimRow[];
+  consentByEsimId: Record<number, ShareConsentSummary>;
   revertAction: (formData: FormData) => Promise<void>;
 };
 
@@ -50,6 +51,7 @@ function copyToClipboard(text: string): Promise<boolean> {
 
 export default function HistoryGroups({
   history,
+  consentByEsimId,
   revertAction,
 }: HistoryGroupsProps) {
   // 同一個人（customerName）分組，未填的放「未填名稱」
@@ -86,6 +88,7 @@ export default function HistoryGroups({
             title={key}
             items={items}
             ids={ids}
+            consentByEsimId={consentByEsimId}
             revertAction={revertAction}
           />
         );
@@ -98,11 +101,13 @@ function GroupSection({
   title,
   items,
   ids,
+  consentByEsimId,
   revertAction,
 }: {
   title: string;
   items: EsimRow[];
   ids: string;
+  consentByEsimId: Record<number, ShareConsentSummary>;
   revertAction: (formData: FormData) => Promise<void>;
 }) {
   const [open, setOpen] = useState(true);
@@ -110,10 +115,7 @@ function GroupSection({
   const [fullShareUrl, setFullShareUrl] = useState("");
 
   useEffect(() => {
-    if (!ids) {
-      setFullShareUrl("");
-      return;
-    }
+    if (!ids) return;
     fetch(`/api/share/sign?ids=${encodeURIComponent(ids)}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("sign failed"))))
       .then((data) => setFullShareUrl(data.url ?? ""))
@@ -209,6 +211,15 @@ function GroupSection({
                       </span>
                       <div className="mt-1 text-[10px] text-zinc-400">
                         completedAt: {formatTimestamp(esim.updatedAt)}
+                      </div>
+                      <div className="mt-1 text-[10px] text-zinc-400">
+                        同意IP: {consentByEsimId[esim.id]?.ip || "—"}
+                      </div>
+                      <div className="text-[10px] text-zinc-400">
+                        同意時間:{" "}
+                        {consentByEsimId[esim.id]?.createdAt
+                          ? formatTimestamp(consentByEsimId[esim.id].createdAt)
+                          : "—"}
                       </div>
                     </td>
                     <td className="px-3 py-3 text-[11px] text-zinc-600">

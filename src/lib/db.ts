@@ -4,6 +4,10 @@ import nodePath from "node:path";
 
 export type EsimStatus = "UNUSED" | "CUSTOMER" | "PEER" | "VOID";
 export type ShareConsentDecision = "agree" | "decline";
+export type ShareConsentSummary = {
+  ip: string | null;
+  createdAt: string;
+};
 
 export type StoreRow = {
   id: number;
@@ -318,4 +322,46 @@ export function createShareConsentLog(data: {
      VALUES (@idsText, @sig, @decision, @policyVersion, @ip, @userAgent, datetime('now'))`,
   );
   stmt.run(data);
+}
+
+export function getLatestAgreedConsentByEsimIds(
+  ids: number[],
+): Record<number, ShareConsentSummary> {
+  if (!ids.length) return {};
+
+  const targetSet = new Set(ids);
+  const result: Record<number, ShareConsentSummary> = {};
+  const rows = db
+    .prepare<
+      unknown[],
+      { idsText: string; ip: string | null; createdAt: string }
+    >(
+      `SELECT "idsText", "ip", "createdAt"
+       FROM "ShareConsentLog"
+       WHERE "decision" = 'agree'
+       ORDER BY datetime("createdAt") DESC, "id" DESC`,
+    )
+    .all();
+
+  for (const row of rows) {
+    const rowIds = row.idsText
+      .split(",")
+      .map((v) => Number(v.trim()))
+      .filter((v) => !Number.isNaN(v) && v > 0);
+
+    for (const id of rowIds) {
+      if (targetSet.has(id) && !result[id]) {
+        result[id] = {
+          ip: row.ip,
+          createdAt: row.createdAt,
+        };
+      }
+    }
+
+    if (Object.keys(result).length >= targetSet.size) {
+      break;
+    }
+  }
+
+  return result;
 }
