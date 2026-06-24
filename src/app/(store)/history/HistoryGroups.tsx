@@ -55,7 +55,8 @@ export default function HistoryGroups({
   revertAction,
 }: HistoryGroupsProps) {
   // 同一個人（customerName）分組，未填的放「未填名稱」
-  const list = Array.isArray(history) ? history : [];
+  const list = Array.isArray(history) ? [...history] : [];
+  list.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
   const groups = list.reduce<Record<string, EsimRow[]>>((acc, esim) => {
     const key = esim.customerName?.trim() || "未填名稱";
     if (!acc[key]) acc[key] = [];
@@ -64,9 +65,15 @@ export default function HistoryGroups({
   }, {});
 
   const groupKeys = Object.keys(groups).sort((a, b) => {
-    const aFirst = groups[a]?.[0]?.createdAt ?? "";
-    const bFirst = groups[b]?.[0]?.createdAt ?? "";
-    return bFirst.localeCompare(aFirst);
+    const aLatest = (groups[a] || [])
+      .map((x) => x.updatedAt || "")
+      .sort()
+      .at(-1) || "";
+    const bLatest = (groups[b] || [])
+      .map((x) => x.updatedAt || "")
+      .sort()
+      .at(-1) || "";
+    return bLatest.localeCompare(aLatest);
   });
 
   if (groupKeys.length === 0) {
@@ -80,7 +87,8 @@ export default function HistoryGroups({
   return (
     <div className="flex flex-col gap-3">
       {groupKeys.map((key) => {
-        const items = Array.isArray(groups[key]) ? groups[key] : [];
+        const items = Array.isArray(groups[key]) ? [...groups[key]] : [];
+        items.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
         const ids = items.map((e) => e.id).join(",");
         return (
           <GroupSection
