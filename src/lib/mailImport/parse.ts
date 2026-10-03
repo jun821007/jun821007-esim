@@ -44,12 +44,17 @@ function findField(lines: string[], label: RegExp): string | null {
   return null;
 }
 
+function findLastField(lines: string[], label: RegExp): string | null {
+  const idx = lines.findLastIndex((l) => label.test(l));
+  return idx >= 0 ? findField(lines.slice(idx), label) : null;
+}
+
 export function countryFromPlanName(planName: string | null): string | null {
   if (!planName) return null;
   return planName.match(/[\u4e00-\u9fff]{2,}/)?.[0] ?? null;
 }
 
-function parseSegment(lines: string[]): ParsedEsim | null {
+function parseSegment(lines: string[], fallbackOrderNo: string | null): ParsedEsim | null {
   const joined = lines.join("\n");
   const lpaMatch = joined.match(/LPA:1\$([^$\s]+)\$([A-Z0-9-]+)/i);
 
@@ -72,7 +77,7 @@ function parseSegment(lines: string[]): ParsedEsim | null {
   if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(smdp)) return null;
 
   const planName = findField(lines, /^方案名稱/);
-  const orderNo = findField(lines, /^訂單編號/);
+  const orderNo = findField(lines, /^訂單編號/) ?? fallbackOrderNo;
 
   return {
     orderNo,
@@ -91,18 +96,32 @@ export function parseEsimEmail(content: string): ParsedEsim[] {
     .map((l) => l.trim())
     .filter(Boolean);
 
-  const starts = lines
-    .map((l, i) => (/^訂單編號/.test(l) ? i : -1))
+  // 一封信可能有多張卡：每張從自己的 ICCID 開始切，訂單編號可能只在最上方出現一次
+  const iccidStarts = lines
+    .map((l, i) => (/^ICCID/i.test(l) ? i : -1))
     .filter((i) => i >= 0);
   const segments =
-    starts.length > 1
-      ? starts.map((s, k) => lines.slice(s, starts[k + 1] ?? lines.length))
-      : [lines];
+    iccidStarts.length > 1
+      ? iccidStarts.map((s, k) => {
+          const prevEnd = k === 0 ? 0 : iccidStarts[k - 1] + 1;
+          const orderIdx = lines
+            .slice(prevEnd, s)
+            .findLastIndex((l) => /^訂單編號/.test(l));
+          const start = orderIdx >= 0 ? prevEnd + orderIdx : s;
+          return {
+            lines: lines.slice(start, iccidStarts[k + 1] ?? lines.length),
+            beforeStart: lines.slice(0, start),
+          };
+        })
+      : [{ lines, beforeStart: [] as string[] }];
 
   const result: ParsedEsim[] = [];
   const seen = new Set<string>();
   for (const segment of segments) {
-    const parsed = parseSegment(segment);
+    const parsed = parseSegment(
+      segment.lines,
+      findLastField(segment.beforeStart, /^訂單編號/),
+    );
     if (parsed && !seen.has(parsed.iccid)) {
       seen.add(parsed.iccid);
       result.push(parsed);
