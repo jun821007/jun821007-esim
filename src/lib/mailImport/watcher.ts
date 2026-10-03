@@ -89,14 +89,24 @@ async function processMessage(
     { source: true, internalDate: true, envelope: true },
     { uid: true },
   );
-  if (!msg || !msg.source) return;
-  if (msg.internalDate && new Date(msg.internalDate) < since) return;
+  if (!msg || !msg.source) {
+    console.warn(LOG, `讀不到信件內容，略過：uid=${uid}`);
+    return;
+  }
+  if (msg.internalDate && new Date(msg.internalDate) < since) {
+    console.log(LOG, `早於起始時間，略過：uid=${uid} 收信時間=${new Date(msg.internalDate).toISOString()}`);
+    return;
+  }
 
   const from = process.env.AUTO_IMPORT_FROM?.trim().toLowerCase();
   if (
     from &&
     !msg.envelope?.from?.some((a) => a.address?.toLowerCase().includes(from))
   ) {
+    console.log(
+      LOG,
+      `寄件者不符，略過：uid=${uid} 寄件者=${msg.envelope?.from?.map((a) => a.address).join(",") ?? ""}`,
+    );
     return;
   }
 
@@ -121,6 +131,7 @@ async function processMessage(
       console.log(LOG, `已入庫 ICCID=${esim.iccid} ${esim.planName ?? ""}`);
     } else {
       result.duplicate++;
+      console.log(LOG, `已存在，略過 ICCID=${esim.iccid}`);
     }
   }
 }
