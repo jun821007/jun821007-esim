@@ -5,7 +5,7 @@ import { importParsedEsim, resolveImportStoreId } from "./importer";
 import { htmlToText, parseEsimEmail } from "./parse";
 
 const SINCE_KEY = "mailImport.since";
-const SAFETY_SCAN_MS = 10 * 60 * 1000;
+const SAFETY_SCAN_MS = 5 * 60 * 1000;
 const RECONNECT_MS = 30 * 1000;
 const LOG = "[mail-import]";
 
@@ -17,6 +17,12 @@ export type ScanResult = {
 };
 
 type Credentials = { user: string; pass: string };
+
+type ScanState = {
+  mailbox: string;
+  processed: Set<number>;
+  lastUid: number;
+};
 
 function getCredentials(): Credentials | null {
   const user = process.env.GMAIL_USER?.trim();
@@ -63,10 +69,63 @@ function buildQuery(since: Date): string {
   return from ? `from:${from} after:${after}` : `ICCID after:${after}`;
 }
 
-async function scanMailbox(
+// 用「所有郵件」而不是收件匣，信被篩選器自動封存時也抓得到
+async function resolveMailbox(client: ImapFlow): Promise<string> {
+  const custom = process.env.AUTO_IMPORT_MAILBOX?.trim();
+  if (custom) return custom;
+  const list = await client.list();
+  return list.find((m) => m.specialUse === "\\All")?.path ?? "INBOX";
+}
+
+async function processMessage(
   client: ImapFlow,
-  processed: Set<number>,
-): Promise<ScanResult> {
+  uid: number,
+  since: Date,
+  storeId: number,
+  result: ScanResult,
+): Promise<void> {
+  const msg = await client.fetchOne(
+    String(uid),
+    { source: true, internalDate: true, envelope: true },
+    { uid: true },
+  );
+  if (!msg || !msg.source) return;
+  if (msg.internalDate && new Date(msg.internalDate) < since) return;
+
+  const from = process.env.AUTO_IMPORT_FROM?.trim().toLowerCase();
+  if (
+    from &&
+    !msg.envelope?.from?.some((a) => a.address?.toLowerCase().includes(from))
+  ) {
+    return;
+  }
+
+  const mail = await simpleParser(msg.source);
+  const content = mail.html ? htmlToText(mail.html) : mail.text || "";
+  const esims = parseEsimEmail(content);
+
+  if (esims.length === 0) {
+    if (/ICCID|Activation/i.test(content)) {
+      result.checked++;
+      result.unparsed++;
+      console.warn(LOG, `無法解析 eSIM 資料，略過：uid=${uid} 主旨=${mail.subject ?? ""}`);
+    }
+    return;
+  }
+
+  result.checked++;
+  for (const esim of esims) {
+    const status = await importParsedEsim(esim, storeId);
+    if (status === "imported") {
+      result.imported++;
+      console.log(LOG, `已入庫 ICCID=${esim.iccid} ${esim.planName ?? ""}`);
+    } else {
+      result.duplicate++;
+    }
+  }
+}
+
+async function scanMailbox(client: ImapFlow, state: ScanState): Promise<ScanResult> {
   const result: ScanResult = { checked: 0, imported: 0, duplicate: 0, unparsed: 0 };
 
   const storeId = resolveImportStoreId();
@@ -78,49 +137,36 @@ async function scanMailbox(
     return result;
   }
 
-  const since = getSince();
-  const uids = await client.search({ gmraw: buildQuery(since) }, { uid: true });
-  if (!uids) return result;
+  const lock = await client.getMailboxLock(state.mailbox);
+  try {
+    const uidNextAtStart = client.mailbox ? client.mailbox.uidNext : 0;
+    const since = getSince();
+    const candidates = new Set<number>();
 
-  for (const uid of uids) {
-    if (processed.has(uid)) continue;
-    try {
-      const msg = await client.fetchOne(
-        String(uid),
-        { source: true, internalDate: true },
-        { uid: true },
-      );
-      if (!msg || !msg.source) {
-        processed.add(uid);
-        continue;
-      }
-      if (msg.internalDate && new Date(msg.internalDate) < since) {
-        processed.add(uid);
-        continue;
-      }
+    const byQuery = await client.search({ gmraw: buildQuery(since) }, { uid: true });
+    for (const uid of byQuery || []) candidates.add(uid);
 
-      result.checked++;
-      const mail = await simpleParser(msg.source);
-      const content = mail.html ? htmlToText(mail.html) : mail.text || "";
-      const esims = parseEsimEmail(content);
-
-      if (esims.length === 0) {
-        result.unparsed++;
-        console.warn(LOG, `無法解析 eSIM 資料，略過：uid=${uid} 主旨=${mail.subject ?? ""}`);
+    // Gmail 搜尋索引有延遲，剛收到的信改用 UID 範圍直接抓
+    if (state.lastUid > 0) {
+      const fresh = await client.search({ uid: `${state.lastUid + 1}:*` }, { uid: true });
+      for (const uid of fresh || []) {
+        if (uid > state.lastUid) candidates.add(uid);
       }
-      for (const esim of esims) {
-        const status = await importParsedEsim(esim, storeId);
-        if (status === "imported") {
-          result.imported++;
-          console.log(LOG, `已入庫 ICCID=${esim.iccid} ${esim.planName ?? ""}`);
-        } else {
-          result.duplicate++;
-        }
-      }
-      processed.add(uid);
-    } catch (err) {
-      console.error(LOG, `處理信件失敗 uid=${uid}，下次掃描會重試:`, err);
     }
+
+    for (const uid of [...candidates].sort((a, b) => a - b)) {
+      if (state.processed.has(uid)) continue;
+      try {
+        await processMessage(client, uid, since, storeId, result);
+        state.processed.add(uid);
+      } catch (err) {
+        console.error(LOG, `處理信件失敗 uid=${uid}，下次掃描會重試:`, err);
+      }
+    }
+
+    state.lastUid = Math.max(state.lastUid, uidNextAtStart - 1);
+  } finally {
+    lock.release();
   }
   return result;
 }
@@ -145,41 +191,40 @@ async function watchLoop(creds: Credentials): Promise<never> {
     let timer: NodeJS.Timeout | undefined;
     try {
       await client.connect();
-      const lock = await client.getMailboxLock("INBOX");
-      try {
-        let running = false;
-        let again = false;
-        const trigger = () => {
-          if (running) {
-            again = true;
-            return;
-          }
-          running = true;
-          void (async () => {
-            try {
-              do {
-                again = false;
-                const r = await scanMailbox(client, processed);
-                if (r.imported || r.unparsed) {
-                  console.log(LOG, `掃描完成：入庫 ${r.imported}、重複 ${r.duplicate}、無法解析 ${r.unparsed}`);
-                }
-              } while (again);
-            } catch (err) {
-              console.error(LOG, "掃描失敗:", err);
-            } finally {
-              running = false;
-            }
-          })();
-        };
+      const mailbox = await resolveMailbox(client);
+      await client.mailboxOpen(mailbox);
+      const state: ScanState = { mailbox, processed, lastUid: 0 };
 
-        client.on("exists", trigger);
-        timer = setInterval(trigger, SAFETY_SCAN_MS);
-        console.log(LOG, "已連線 Gmail，開始即時監聽新信");
-        trigger();
-        await new Promise<void>((resolve) => client.once("close", () => resolve()));
-      } finally {
-        lock.release();
-      }
+      let running = false;
+      let again = false;
+      const trigger = () => {
+        if (running) {
+          again = true;
+          return;
+        }
+        running = true;
+        void (async () => {
+          try {
+            do {
+              again = false;
+              const r = await scanMailbox(client, state);
+              if (r.checked) {
+                console.log(LOG, `掃描完成：入庫 ${r.imported}、重複 ${r.duplicate}、無法解析 ${r.unparsed}`);
+              }
+            } while (again);
+          } catch (err) {
+            console.error(LOG, "掃描失敗:", err);
+          } finally {
+            running = false;
+          }
+        })();
+      };
+
+      client.on("exists", trigger);
+      timer = setInterval(trigger, SAFETY_SCAN_MS);
+      console.log(LOG, `已連線 Gmail（${mailbox}），開始即時監聽新信`);
+      trigger();
+      await new Promise<void>((resolve) => client.once("close", () => resolve()));
     } catch (err) {
       console.error(LOG, "Gmail 連線失敗:", err);
     } finally {
@@ -197,11 +242,10 @@ export async function runMailImportOnce(): Promise<ScanResult> {
   if (!creds) throw new Error("GMAIL_USER / GMAIL_APP_PASSWORD 未設定");
   const client = createClient(creds);
   await client.connect();
-  const lock = await client.getMailboxLock("INBOX");
   try {
-    return await scanMailbox(client, new Set());
+    const mailbox = await resolveMailbox(client);
+    return await scanMailbox(client, { mailbox, processed: new Set(), lastUid: 0 });
   } finally {
-    lock.release();
     await client.logout().catch(() => undefined);
   }
 }
