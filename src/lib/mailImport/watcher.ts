@@ -39,6 +39,15 @@ function createClient({ user, pass }: Credentials): ImapFlow {
 
 // 第一次啟用時記下當下時間，之後只匯入這個時間之後收到的信，避免把以前手動入過庫的舊信重複匯入
 function getSince(): Date {
+  const override = process.env.AUTO_IMPORT_SINCE?.trim();
+  if (override) {
+    const iso = /^\d{4}-\d{2}-\d{2}$/.test(override)
+      ? `${override}T00:00:00+08:00`
+      : override;
+    const date = new Date(iso);
+    if (!Number.isNaN(date.getTime())) return date;
+    console.error(LOG, `AUTO_IMPORT_SINCE 格式錯誤：${override}，改用預設起始時間`);
+  }
   const stored = getSetting(SINCE_KEY);
   if (stored) return new Date(stored);
   const now = new Date();
