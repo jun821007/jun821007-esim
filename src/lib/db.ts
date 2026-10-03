@@ -31,6 +31,8 @@ export type EsimRow = {
   customerContact: string | null;
   notes: string | null;
   qrPath: string | null;
+  iccid: string | null;
+  orderNo: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -107,6 +109,10 @@ db.exec(`
     "userAgent" TEXT,
     "createdAt" TEXT NOT NULL DEFAULT (datetime('now'))
   );
+  CREATE TABLE IF NOT EXISTS "AppSetting" (
+    "key" TEXT PRIMARY KEY,
+    "value" TEXT NOT NULL
+  );
 `);
 
 // Migration: add qrPath column if it does not exist yet
@@ -123,6 +129,12 @@ try {
   const hasStoreId = info.some((c) => c.name === "storeId");
   if (!hasStoreId) {
     db.exec(`ALTER TABLE "Esim" ADD COLUMN "storeId" INTEGER REFERENCES "Store"("id");`);
+  }
+  if (!info.some((c) => c.name === "iccid")) {
+    db.exec(`ALTER TABLE "Esim" ADD COLUMN "iccid" TEXT;`);
+  }
+  if (!info.some((c) => c.name === "orderNo")) {
+    db.exec(`ALTER TABLE "Esim" ADD COLUMN "orderNo" TEXT;`);
   }
 } catch {
   // ignore migration errors
@@ -199,13 +211,40 @@ export function createEsimRow(data: {
   sellPrice: number | null;
   notes: string | null;
   qrPath: string | null;
+  iccid?: string | null;
+  orderNo?: string | null;
 }): void {
   const stmt = db.prepare(
     `INSERT INTO "Esim"
-      ("storeId","country","planName","days","batchName","costPrice","sellPrice","notes","qrPath","status","createdAt","updatedAt")
-     VALUES (@storeId, @country, @planName, @days, @batchName, @costPrice, @sellPrice, @notes, @qrPath, 'UNUSED', datetime('now'), datetime('now'))`,
+      ("storeId","country","planName","days","batchName","costPrice","sellPrice","notes","qrPath","iccid","orderNo","status","createdAt","updatedAt")
+     VALUES (@storeId, @country, @planName, @days, @batchName, @costPrice, @sellPrice, @notes, @qrPath, @iccid, @orderNo, 'UNUSED', datetime('now'), datetime('now'))`,
   );
-  stmt.run(data);
+  stmt.run({ ...data, iccid: data.iccid ?? null, orderNo: data.orderNo ?? null });
+}
+
+export function getSetting(key: string): string | null {
+  const row = db
+    .prepare<[string], { value: string }>(
+      `SELECT "value" FROM "AppSetting" WHERE "key" = ?`,
+    )
+    .get(key);
+  return row?.value ?? null;
+}
+
+export function setSetting(key: string, value: string): void {
+  db.prepare(
+    `INSERT INTO "AppSetting" ("key","value") VALUES (?, ?)
+     ON CONFLICT("key") DO UPDATE SET "value" = excluded."value"`,
+  ).run(key, value);
+}
+
+export function esimExistsByIccid(iccid: string): boolean {
+  const row = db
+    .prepare<[string], { id: number }>(
+      `SELECT "id" FROM "Esim" WHERE "iccid" = ? LIMIT 1`,
+    )
+    .get(iccid);
+  return Boolean(row);
 }
 
 export function updateEsimRow(data: {
