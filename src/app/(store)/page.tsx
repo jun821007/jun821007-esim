@@ -1,4 +1,4 @@
-﻿import { revalidatePath } from "next/cache";
+import { revalidatePath } from "next/cache";
 import {
   deleteEsimRow,
   listEsims,
@@ -10,6 +10,7 @@ import {
 } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import InventoryTable from "./InventoryTable";
+import RefreshButton from "./RefreshButton";
 
 export const dynamic = "force-dynamic";
 
@@ -93,8 +94,8 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 font-sans text-zinc-900">
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <header className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="pr-12 sm:pr-0">
             <h1 className="text-2xl font-semibold tracking-tight">
               eSIM 庫存現貨 <span className="text-sm font-normal text-zinc-500">歡迎您！{session.storeName}</span>
             </h1>
@@ -123,6 +124,7 @@ export default async function Home() {
                 登出
               </button>
             </form>
+            <RefreshButton className="absolute right-0 top-0 sm:static" />
           </div>
         </header>
 
