@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import type { EsimRow, ShareConsentSummary } from "@/lib/db";
+import { pushShipmentToPos } from "../posActions";
 import RevertButton from "./RevertButton";
 
 type HistoryGroupsProps = {
   history: EsimRow[];
   consentByEsimId: Record<number, ShareConsentSummary>;
   revertAction: (formData: FormData) => Promise<void>;
+  posEnabled?: boolean;
 };
 
 function statusLabel(status: string): string {
@@ -53,6 +55,7 @@ export default function HistoryGroups({
   history,
   consentByEsimId,
   revertAction,
+  posEnabled = false,
 }: HistoryGroupsProps) {
   // 同一個人（customerName）分組，未填的放「未填名稱」
   const list = Array.isArray(history) ? [...history] : [];
@@ -98,6 +101,7 @@ export default function HistoryGroups({
             ids={ids}
             consentByEsimId={consentByEsimId}
             revertAction={revertAction}
+            posEnabled={posEnabled}
           />
         );
       })}
@@ -111,14 +115,22 @@ function GroupSection({
   ids,
   consentByEsimId,
   revertAction,
+  posEnabled,
 }: {
   title: string;
   items: EsimRow[];
   ids: string;
   consentByEsimId: Record<number, ShareConsentSummary>;
   revertAction: (formData: FormData) => Promise<void>;
+  posEnabled: boolean;
 }) {
   const [open, setOpen] = useState(true);
+  const [posSending, setPosSending] = useState(false);
+  const unsentToPos = posEnabled
+    ? items.filter(
+        (e) => (e.status === "CUSTOMER" || e.status === "PEER") && e.customerName && !e.posOrderId,
+      )
+    : [];
   const [copySuccess, setCopySuccess] = useState(false);
   const [fullShareUrl, setFullShareUrl] = useState("");
 
@@ -182,6 +194,26 @@ function GroupSection({
               {copySuccess ? "✓ 已複製" : "複製連結"}
             </button>
           )}
+          {unsentToPos.length > 0 && (
+            <button
+              type="button"
+              disabled={posSending}
+              className="rounded-full bg-orange-500 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-orange-600 disabled:opacity-60"
+              onClick={async (e) => {
+                e.stopPropagation();
+                setPosSending(true);
+                const r = await pushShipmentToPos(unsentToPos.map((x) => x.id));
+                setPosSending(false);
+                window.alert(
+                  r.ok
+                    ? `已掛帳到 POS ${r.sent} 張${r.needsPrice ? `，其中 ${r.needsPrice} 張待填價` : ""}`
+                    : `POS 掛帳失敗：${r.error}`,
+                );
+              }}
+            >
+              {posSending ? "送 POS 中…" : `未進 POS ${unsentToPos.length} 張・補送`}
+            </button>
+          )}
         </div>
         <span className="text-zinc-400">{open ? "▲" : "▼"}</span>
       </div>
@@ -220,6 +252,11 @@ function GroupSection({
                       <div className="mt-1 text-[10px] text-zinc-400">
                         completedAt: {formatTimestamp(esim.updatedAt)}
                       </div>
+                      {esim.posOrderId && (
+                        <div className="mt-1 text-[10px] text-emerald-600">
+                          POS 掛帳: {esim.posOrderId}
+                        </div>
+                      )}
                       <div className="mt-1 text-[10px] text-zinc-400">
                         同意IP: {consentByEsimId[esim.id]?.ip || "—"}
                       </div>
@@ -234,7 +271,7 @@ function GroupSection({
                       {esim.notes || "—"}
                     </td>
                     <td className="whitespace-nowrap px-3 py-3">
-                      <RevertButton esimId={esim.id} action={revertAction} />
+                      <RevertButton esimId={esim.id} posOrderId={esim.posOrderId} action={revertAction} />
                     </td>
                   </tr>
                 ))}

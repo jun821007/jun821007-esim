@@ -3,9 +3,11 @@ import Link from "next/link";
 import {
   getLatestAgreedConsentByEsimIds,
   listEsims,
+  setEsimPosOrderId,
   updateManyWithCustomer,
   type EsimRow,
 } from "@/lib/db";
+import { isPosStore } from "@/lib/pos";
 import { getSession } from "@/lib/session";
 import HistoryGroups from "./HistoryGroups";
 
@@ -19,6 +21,7 @@ async function revertToStockAction(formData: FormData) {
   const id = Number(idRaw);
   if (!id || Number.isNaN(id)) return;
   updateManyWithCustomer([id], "UNUSED", null, storeId);
+  setEsimPosOrderId([id], null);
   revalidatePath("/history");
   revalidatePath("/");
 }
@@ -56,6 +59,7 @@ export default async function HistoryPage() {
           history={history}
           consentByEsimId={consentByEsimId}
           revertAction={revertToStockAction}
+          posEnabled={isPosStore(storeId)}
         />
       </div>
     </div>

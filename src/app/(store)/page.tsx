@@ -8,6 +8,7 @@ import {
   type EsimRow,
   type EsimStatus,
 } from "@/lib/db";
+import { isPosStore } from "@/lib/pos";
 import { getSession } from "@/lib/session";
 import InventoryTable from "./InventoryTable";
 import RefreshButton from "./RefreshButton";
@@ -58,6 +59,8 @@ async function bulkUpdateStatusAction(formData: FormData) {
     .filter((v) => !Number.isNaN(v) && v > 0);
 
   if (ids.length === 0) return;
+  // 要掛帳到 POS 的店家，出貨一定要有客戶名稱
+  if (status !== "VOID" && !customerName && isPosStore(storeId)) return;
 
   updateManyWithCustomer(ids, status, customerName, storeId);
   revalidatePath("/");
@@ -90,6 +93,7 @@ export default async function Home() {
   const esims: EsimRow[] = listEsims(storeId);
   const inStock = esims.filter((e) => e.status === "UNUSED");
   const history = esims.filter((e) => e.status !== "UNUSED");
+  const posEnabled = isPosStore(storeId);
 
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 font-sans text-zinc-900">
@@ -110,6 +114,14 @@ export default async function Home() {
             >
               歷史流水
             </a>
+            {posEnabled && (
+              <a
+                href="/pos-settings"
+                className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 active:bg-zinc-100"
+              >
+                POS 對照表
+              </a>
+            )}
             <a
               href="/new"
               className="inline-flex items-center justify-center rounded-full bg-zinc-900 px-4 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 active:bg-zinc-950"
@@ -134,6 +146,7 @@ export default async function Home() {
           updateEsim={updateEsim}
           bulkUpdateStatus={bulkUpdateStatusAction}
           bulkDelete={deleteEsimAction}
+          posEnabled={posEnabled}
         />
       </div>
     </div>

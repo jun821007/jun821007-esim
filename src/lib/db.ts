@@ -34,6 +34,7 @@ export type EsimRow = {
   iccid: string | null;
   orderNo: string | null;
   phoneNo: string | null;
+  posOrderId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -139,6 +140,9 @@ try {
   }
   if (!info.some((c) => c.name === "phoneNo")) {
     db.exec(`ALTER TABLE "Esim" ADD COLUMN "phoneNo" TEXT;`);
+  }
+  if (!info.some((c) => c.name === "posOrderId")) {
+    db.exec(`ALTER TABLE "Esim" ADD COLUMN "posOrderId" TEXT;`);
   }
 } catch {
   // ignore migration errors
@@ -246,6 +250,11 @@ export function setSetting(key: string, value: string): void {
     `INSERT INTO "AppSetting" ("key","value") VALUES (?, ?)
      ON CONFLICT("key") DO UPDATE SET "value" = excluded."value"`,
   ).run(key, value);
+}
+
+export function setEsimPosOrderId(ids: number[], posOrderId: string | null): void {
+  const stmt = db.prepare(`UPDATE "Esim" SET "posOrderId" = ? WHERE "id" = ?`);
+  for (const id of ids) stmt.run(posOrderId, id);
 }
 
 export function esimExistsByIccid(iccid: string): boolean {

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { EsimRow, EsimStatus } from "@/lib/db";
 import CopyPhonesBox from "./CopyPhonesBox";
 import { checkHk3BeforeShip, type Hk3ShipCheck } from "./hk3Actions";
+import { pushShipmentToPos, type PosPushResult } from "./posActions";
 
 type InventoryTableProps = {
   inStock: EsimRow[];
@@ -11,6 +12,7 @@ type InventoryTableProps = {
   updateEsim: (formData: FormData) => Promise<void>;
   bulkUpdateStatus: (formData: FormData) => Promise<void>;
   bulkDelete: (formData: FormData) => Promise<void>;
+  posEnabled?: boolean;
 };
 
 function statusLabel(status: string): string {
@@ -71,6 +73,7 @@ export default function InventoryTable({
   updateEsim,
   bulkUpdateStatus,
   bulkDelete,
+  posEnabled = false,
 }: InventoryTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
@@ -144,6 +147,7 @@ export default function InventoryTable({
   const [copySuccess, setCopySuccess] = useState(false);
   const [previewQrEsim, setPreviewQrEsim] = useState<EsimRow | null>(null);
   const [shipChecking, setShipChecking] = useState(false);
+  const [shipSubmitting, setShipSubmitting] = useState(false);
   const [shipBlock, setShipBlock] = useState<Hk3ShipCheck["activated"] | null>(null);
 
   const qrImageSrc = (esim: EsimRow) =>
@@ -239,7 +243,9 @@ export default function InventoryTable({
                       </div>
                       <div>
                         <label className="block text-xs text-zinc-600">
-                          客戶／同行名稱（選填）
+                          {posEnabled && pendingStatus !== "VOID"
+                            ? "客戶／同行名稱（必填，會掛帳到 POS 這個名字）"
+                            : "客戶／同行名稱（選填）"}
                         </label>
                         <input
                           type="text"
@@ -310,6 +316,10 @@ export default function InventoryTable({
                           type="button"
                           disabled={shipChecking || Boolean(shipBlock)}
                           onClick={async () => {
+                            if (posEnabled && pendingStatus !== "VOID" && !pendingCustomerName.trim()) {
+                              window.alert("請填客戶／同行名稱，POS 要用這個名字掛帳");
+                              return;
+                            }
                             if (pendingStatus !== "VOID") {
                               setShipChecking(true);
                               const check = await checkHk3BeforeShip(Array.from(selectedIds)).catch(
@@ -385,7 +395,32 @@ export default function InventoryTable({
                         onClick={async () => {
                           if (!bulkFormRef.current) return;
                           const fd = new FormData(bulkFormRef.current);
+                          const shippedIds = Array.from(selectedIds);
+                          setShipSubmitting(true);
                           await bulkUpdateStatus(fd);
+                          if (posEnabled && pendingStatus !== "VOID") {
+                            for (;;) {
+                              const r = await pushShipmentToPos(shippedIds).catch(
+                                (e: unknown): PosPushResult => ({ ok: false, error: String(e) }),
+                              );
+                              if (r.ok) {
+                                if (r.needsPrice > 0) {
+                                  window.alert(
+                                    `已掛帳到 POS。其中 ${r.needsPrice} 張對照表沒有設定價格，請到 POS 未結單補上金額（標示「待填價」）。`,
+                                  );
+                                }
+                                break;
+                              }
+                              if (
+                                !window.confirm(
+                                  `已出貨，但 POS 掛帳失敗：${r.error}\n\n按「確定」重試，按「取消」稍後自己到 POS 補。`,
+                                )
+                              ) {
+                                break;
+                              }
+                            }
+                          }
+                          setShipSubmitting(false);
                           pendingStep2Ref.current = false;
                           setMarkModalOpen(false);
                           setMarkModalStep(1);
@@ -393,9 +428,10 @@ export default function InventoryTable({
                           setPendingCustomerName("");
                           setSelectedIds(new Set());
                         }}
-                        className="mt-3 w-full rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
+                        disabled={shipSubmitting}
+                        className="mt-3 w-full rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
                       >
-                        確定
+                        {shipSubmitting ? (posEnabled ? "出貨並掛帳到 POS 中…" : "處理中…") : "確定"}
                       </button>
                     </>
                   )}
