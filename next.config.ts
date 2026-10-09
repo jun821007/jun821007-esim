@@ -1,7 +1,7 @@
 ﻿import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["imapflow", "mailparser", "qrcode"],
+  serverExternalPackages: ["imapflow", "mailparser", "qrcode", "sharp", "tesseract.js"],
   turbopack: {
     root: __dirname,
   },

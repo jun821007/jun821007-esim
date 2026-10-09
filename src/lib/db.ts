@@ -33,6 +33,7 @@ export type EsimRow = {
   qrPath: string | null;
   iccid: string | null;
   orderNo: string | null;
+  phoneNo: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -136,6 +137,9 @@ try {
   if (!info.some((c) => c.name === "orderNo")) {
     db.exec(`ALTER TABLE "Esim" ADD COLUMN "orderNo" TEXT;`);
   }
+  if (!info.some((c) => c.name === "phoneNo")) {
+    db.exec(`ALTER TABLE "Esim" ADD COLUMN "phoneNo" TEXT;`);
+  }
 } catch {
   // ignore migration errors
 }
@@ -213,13 +217,19 @@ export function createEsimRow(data: {
   qrPath: string | null;
   iccid?: string | null;
   orderNo?: string | null;
+  phoneNo?: string | null;
 }): void {
   const stmt = db.prepare(
     `INSERT INTO "Esim"
-      ("storeId","country","planName","days","batchName","costPrice","sellPrice","notes","qrPath","iccid","orderNo","status","createdAt","updatedAt")
-     VALUES (@storeId, @country, @planName, @days, @batchName, @costPrice, @sellPrice, @notes, @qrPath, @iccid, @orderNo, 'UNUSED', datetime('now'), datetime('now'))`,
+      ("storeId","country","planName","days","batchName","costPrice","sellPrice","notes","qrPath","iccid","orderNo","phoneNo","status","createdAt","updatedAt")
+     VALUES (@storeId, @country, @planName, @days, @batchName, @costPrice, @sellPrice, @notes, @qrPath, @iccid, @orderNo, @phoneNo, 'UNUSED', datetime('now'), datetime('now'))`,
   );
-  stmt.run({ ...data, iccid: data.iccid ?? null, orderNo: data.orderNo ?? null });
+  stmt.run({
+    ...data,
+    iccid: data.iccid ?? null,
+    orderNo: data.orderNo ?? null,
+    phoneNo: data.phoneNo ?? null,
+  });
 }
 
 export function getSetting(key: string): string | null {

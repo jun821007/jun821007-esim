@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EsimRow, EsimStatus } from "@/lib/db";
+import CopyPhonesBox from "./CopyPhonesBox";
+import { checkHk3BeforeShip, type Hk3ShipCheck } from "./hk3Actions";
 
 type InventoryTableProps = {
   inStock: EsimRow[];
@@ -141,6 +143,8 @@ export default function InventoryTable({
   const [pendingCustomerName, setPendingCustomerName] = useState("");
   const [copySuccess, setCopySuccess] = useState(false);
   const [previewQrEsim, setPreviewQrEsim] = useState<EsimRow | null>(null);
+  const [shipChecking, setShipChecking] = useState(false);
+  const [shipBlock, setShipBlock] = useState<Hk3ShipCheck["activated"] | null>(null);
 
   const qrImageSrc = (esim: EsimRow) =>
     esim.qrPath?.startsWith("http")
@@ -164,6 +168,7 @@ export default function InventoryTable({
               setMarkModalStep(1);
               setPendingStatus("CUSTOMER");
               setPendingCustomerName("");
+              setShipBlock(null);
               setMarkModalOpen(true);
             }}
             className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
@@ -246,6 +251,44 @@ export default function InventoryTable({
                           className="mt-1 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none focus:border-zinc-400 focus:bg-white"
                         />
                       </div>
+                      {shipBlock && (
+                        <div className="space-y-2 rounded-xl border border-rose-200 bg-white p-3">
+                          <p className="text-sm font-medium text-rose-700">
+                            ⚠️ 有 {shipBlock.length} 張台灣卡已被開通，不能出貨
+                          </p>
+                          <ul className="space-y-0.5 text-xs text-zinc-600">
+                            {shipBlock.map((a) => (
+                              <li key={a.id}>
+                                {a.phone}・狀態 {a.status}
+                              </li>
+                            ))}
+                          </ul>
+                          <CopyPhonesBox
+                            title="門號（可直接貼給廠商）"
+                            phones={shipBlock.map((a) => a.phone)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const blocked = new Set(shipBlock.map((a) => a.id));
+                              const rest = new Set(
+                                Array.from(selectedIds).filter((id) => !blocked.has(id)),
+                              );
+                              setShipBlock(null);
+                              setSelectedIds(rest);
+                              if (rest.size === 0) {
+                                setMarkModalOpen(false);
+                                return;
+                              }
+                              pendingStep2Ref.current = true;
+                              setMarkModalStep(2);
+                            }}
+                            className="w-full rounded-full bg-zinc-900 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-800"
+                          >
+                            取消勾選這幾張，其餘繼續出貨
+                          </button>
+                        </div>
+                      )}
                       <div className="flex gap-2 pt-2">
                         <button
                           type="button"
@@ -257,6 +300,7 @@ export default function InventoryTable({
                             setPendingCustomerName("");
                             setSelectedIds(new Set());
                             setCopySuccess(false);
+                            setShipBlock(null);
                           }}
                           className="flex-1 rounded-full border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-700"
                         >
@@ -264,13 +308,36 @@ export default function InventoryTable({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
+                          disabled={shipChecking || Boolean(shipBlock)}
+                          onClick={async () => {
+                            if (pendingStatus !== "VOID") {
+                              setShipChecking(true);
+                              const check = await checkHk3BeforeShip(Array.from(selectedIds)).catch(
+                                () => null,
+                              );
+                              setShipChecking(false);
+                              if (check?.activated.length) {
+                                setShipBlock(check.activated);
+                                return;
+                              }
+                              const failedPhones = check
+                                ? check.failed.map((f) => f.phone)
+                                : ["（全部）"];
+                              if (
+                                failedPhones.length > 0 &&
+                                !window.confirm(
+                                  `以下台灣卡無法確認是否已開通（查詢網站可能連不上）：\n${failedPhones.join("\n")}\n\n仍要出貨嗎？`,
+                                )
+                              ) {
+                                return;
+                              }
+                            }
                             pendingStep2Ref.current = true;
                             setMarkModalStep(2);
                           }}
-                          className="flex-1 rounded-full bg-zinc-900 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-800"
+                          className="flex-1 rounded-full bg-zinc-900 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
                         >
-                          確定
+                          {shipChecking ? "檢查開通中…" : "確定"}
                         </button>
                       </div>
                     </>

@@ -9,7 +9,7 @@ import {
 } from "@/lib/db";
 import type { ParsedEsim } from "./parse";
 
-function qrStorage() {
+export function qrStorage() {
   const absDbPath =
     process.env.DATABASE_PATH && path.isAbsolute(process.env.DATABASE_PATH)
       ? process.env.DATABASE_PATH

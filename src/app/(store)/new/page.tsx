@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { createEsimRow, findEsimsByIds } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import Hk3UploadSection from "./Hk3UploadSection";
 import { CollapsibleSection, QrFileInputWithPreview, QrUploadSubmitButton, ShareLinkSubmitButton, UploadedModal, UploadErrorModal } from "./NewPageClient";
 
 export const dynamic = "force-dynamic";
@@ -226,6 +227,10 @@ export default async function NewPage() {
         </Suspense>
 
         <section className="flex flex-col gap-4">
+          <CollapsibleSection title="台灣卡（3HK）截圖入庫・自動查開通" defaultOpen>
+            <Hk3UploadSection />
+          </CollapsibleSection>
+
           <CollapsibleSection title="圖片入庫" defaultOpen>
             <p className="text-xs text-zinc-500">
               一次選多張 QR 圖片，系統會自動依方案資訊分別建立多筆 eSIM。
