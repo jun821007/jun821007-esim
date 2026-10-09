@@ -3,8 +3,9 @@ import path from "node:path";
 import QRCode from "qrcode";
 import { createEsimRow, esimExistsByIccid } from "@/lib/db";
 import { qrStorage } from "@/lib/mailImport/importer";
-import { isFreshCard, queryHk3 } from "./query";
-import { analyzeScreenshot, createOcrWorker } from "./screenshot";
+import { identifyCard } from "./identify";
+import { isFreshCard } from "./query";
+import { createOcrWorker } from "./screenshot";
 
 export type Hk3ImportResult = {
   imported: { file: string; phone: string; planName: string | null }[];
@@ -33,29 +34,12 @@ export async function importHk3Screenshots(
     for (const file of files) {
       const name = file.name || "未命名圖片";
       try {
-        const info = await analyzeScreenshot(worker, Buffer.from(await file.arrayBuffer()));
-        if (!info.lpa) {
-          result.failed.push({ file: name, reason: "讀不到 QR Code" });
+        const found = await identifyCard(worker, Buffer.from(await file.arrayBuffer()));
+        if ("reason" in found) {
+          result.failed.push({ file: name, reason: found.reason });
           continue;
         }
-        if (!info.phone || !info.iccid) {
-          result.failed.push({ file: name, reason: "辨識不到門號或 ICCID（截圖要拍到左邊的門號和卡號）" });
-          continue;
-        }
-
-        const status = await queryHk3({ phone: info.phone });
-        if (!status) {
-          result.failed.push({ file: name, reason: `門號 ${info.phone} 查無資料，可能辨識錯誤` });
-          continue;
-        }
-        // 用門號查回來的 ICCID 要和截圖上讀到的一致，才能確定兩個號碼都沒讀錯
-        if (status.iccid !== info.iccid) {
-          result.failed.push({
-            file: name,
-            reason: `門號 ${info.phone} 和 ICCID 對不上，可能辨識錯誤`,
-          });
-          continue;
-        }
+        const { lpa, status } = found;
 
         if (seen.has(status.iccid) || esimExistsByIccid(status.iccid)) {
           result.duplicate.push({ file: name, phone: status.phone });
@@ -74,7 +58,7 @@ export async function importHk3Screenshots(
         const fileName = `hk3-${status.iccid}.png`;
         await fs.writeFile(
           path.join(dir, fileName),
-          await QRCode.toBuffer(info.lpa, { width: 512, margin: 2 }),
+          await QRCode.toBuffer(lpa, { width: 512, margin: 2 }),
         );
         const planName = opts.planName || status.planName;
         createEsimRow({
