@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import type { EsimRow, ShareConsentSummary } from "@/lib/db";
 import { pushShipmentToPos } from "../posActions";
-import RevertButton from "./RevertButton";
+import RevertButton, { type RevertResult } from "./RevertButton";
 
 type HistoryGroupsProps = {
   history: EsimRow[];
   consentByEsimId: Record<number, ShareConsentSummary>;
-  revertAction: (formData: FormData) => Promise<void>;
+  revertAction: (id: number) => Promise<RevertResult>;
   posEnabled?: boolean;
 };
 
@@ -121,7 +121,7 @@ function GroupSection({
   items: EsimRow[];
   ids: string;
   consentByEsimId: Record<number, ShareConsentSummary>;
-  revertAction: (formData: FormData) => Promise<void>;
+  revertAction: (id: number) => Promise<RevertResult>;
   posEnabled: boolean;
 }) {
   const [open, setOpen] = useState(true);

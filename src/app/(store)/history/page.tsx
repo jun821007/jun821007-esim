@@ -1,29 +1,41 @@
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import {
+  findEsimsByIds,
   getLatestAgreedConsentByEsimIds,
   listEsims,
   setEsimPosOrderId,
   updateManyWithCustomer,
   type EsimRow,
 } from "@/lib/db";
-import { isPosStore } from "@/lib/pos";
+import { isPosStore, revertEsimInPos } from "@/lib/pos";
 import { getSession } from "@/lib/session";
 import HistoryGroups from "./HistoryGroups";
+import type { RevertResult } from "./RevertButton";
 
 export const dynamic = "force-dynamic";
 
-async function revertToStockAction(formData: FormData) {
+async function revertToStockAction(id: number): Promise<RevertResult> {
   "use server";
   const session = await getSession();
   const storeId = session.storeId ?? 1;
-  const idRaw = (formData.get("id") as string) || "";
-  const id = Number(idRaw);
-  if (!id || Number.isNaN(id)) return;
+  if (!id || Number.isNaN(id)) return { ok: false, error: "卡片編號錯誤" };
+  const [esim] = findEsimsByIds([id], storeId);
+  if (!esim) return { ok: false, error: "找不到這張卡" };
+
+  // 先刪 POS 那筆，成功才衝正 eSIM，避免兩邊不一致
+  if (esim.posOrderId) {
+    try {
+      await revertEsimInPos(id, esim.posOrderId);
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+    setEsimPosOrderId([id], null);
+  }
   updateManyWithCustomer([id], "UNUSED", null, storeId);
-  setEsimPosOrderId([id], null);
   revalidatePath("/history");
   revalidatePath("/");
+  return { ok: true };
 }
 
 export default async function HistoryPage() {
