@@ -204,11 +204,7 @@ function GroupSection({
                 setPosSending(true);
                 const r = await pushShipmentToPos(unsentToPos.map((x) => x.id));
                 setPosSending(false);
-                window.alert(
-                  r.ok
-                    ? `已掛帳到 POS ${r.sent} 張${r.needsPrice ? `，其中 ${r.needsPrice} 張待填價` : ""}`
-                    : `POS 掛帳失敗：${r.error}`,
-                );
+                window.alert(r.ok ? `已掛帳到 POS ${r.sent} 張` : `POS 掛帳失敗：${r.error}`);
               }}
             >
               {posSending ? "送 POS 中…" : `未進 POS ${unsentToPos.length} 張・補送`}

@@ -403,14 +403,7 @@ export default function InventoryTable({
                               const r = await pushShipmentToPos(shippedIds).catch(
                                 (e: unknown): PosPushResult => ({ ok: false, error: String(e) }),
                               );
-                              if (r.ok) {
-                                if (r.needsPrice > 0) {
-                                  window.alert(
-                                    `已掛帳到 POS。其中 ${r.needsPrice} 張對照表沒有設定價格，請到 POS 未結單補上金額（標示「待填價」）。`,
-                                  );
-                                }
-                                break;
-                              }
+                              if (r.ok) break;
                               if (
                                 !window.confirm(
                                   `已出貨，但 POS 掛帳失敗：${r.error}\n\n按「確定」重試，按「取消」稍後自己到 POS 補。`,

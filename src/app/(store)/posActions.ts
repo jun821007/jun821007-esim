@@ -6,9 +6,9 @@ import { getSession } from "@/lib/session";
 import {
   fetchPosPresets,
   isPosStore,
-  savePosMap,
+  savePosBinding,
   sendShipmentToPos,
-  type PosMapRule,
+  type PosBinding,
   type PosPreset,
 } from "@/lib/pos";
 
@@ -57,12 +57,10 @@ export async function loadPosPresets(): Promise<{ presets: PosPreset[] } | { err
   }
 }
 
-export async function savePosMapAction(rules: PosMapRule[]): Promise<void> {
+export async function bindPosPresetAction(key: string, presetName: string | null): Promise<PosBinding[]> {
   const session = await getSession();
-  if (!isPosStore(session.storeId ?? 1)) return;
-  savePosMap(
-    rules
-      .map((r) => ({ keyword: r.keyword.trim(), preset: r.preset.trim() }))
-      .filter((r) => r.keyword && r.preset),
-  );
+  if (!isPosStore(session.storeId ?? 1)) return [];
+  const next = savePosBinding(key.trim(), presetName);
+  revalidatePath("/pos-settings");
+  return next;
 }

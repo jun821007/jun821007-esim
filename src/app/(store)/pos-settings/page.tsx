@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getPosMap, isPosStore } from "@/lib/pos";
+import { listEsims } from "@/lib/db";
+import { collectShipmentNames, getPosBindings, isPosStore } from "@/lib/pos";
 import { getSession } from "@/lib/session";
 import PosMapEditor from "./PosMapEditor";
 
@@ -8,7 +9,8 @@ export const dynamic = "force-dynamic";
 
 export default async function PosSettingsPage() {
   const session = await getSession();
-  if (!isPosStore(session.storeId ?? 1)) redirect("/");
+  const storeId = session.storeId ?? 1;
+  if (!isPosStore(storeId)) redirect("/");
 
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 font-sans text-zinc-900">
@@ -17,7 +19,7 @@ export default async function PosSettingsPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">POS 對照表</h1>
             <p className="mt-1 text-sm text-zinc-500">
-              出貨時用「國家＋方案」比對關鍵字，對到的 POS 預設卡就用它的售價／成本掛帳；對不到的會以「待填價」掛進 POS，之後在 POS 未結單補金額。
+              點以前出過或庫存裡的國家／方案，指定它等於 POS 哪張常用卡。出貨就用那張卡的售價和成本。還沒綁的一樣可以出貨，到 POS 未結再填價。
             </p>
           </div>
           <Link
@@ -27,7 +29,7 @@ export default async function PosSettingsPage() {
             回到庫存現貨
           </Link>
         </header>
-        <PosMapEditor initialRules={getPosMap()} />
+        <PosMapEditor names={collectShipmentNames(listEsims(storeId))} initialBindings={getPosBindings()} />
       </div>
     </div>
   );
