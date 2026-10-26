@@ -19,7 +19,7 @@ export default async function PosSettingsPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">POS 對照表</h1>
             <p className="mt-1 text-sm text-zinc-500">
-              點以前出過或庫存裡的國家／方案，指定它等於 POS 哪張常用卡。出貨就用那張卡的售價和成本。還沒綁的一樣可以出貨，到 POS 未結再填價。
+              從已出貨紀錄點國家和方案名稱（天數在方案名稱裡），再指定 POS 常用卡。出貨用那張卡的售價和成本。還沒綁的一樣可以出貨，到 POS 未結再填價。
             </p>
           </div>
           <Link
@@ -29,7 +29,12 @@ export default async function PosSettingsPage() {
             回到庫存現貨
           </Link>
         </header>
-        <PosMapEditor names={collectShipmentNames(listEsims(storeId))} initialBindings={getPosBindings()} />
+        <PosMapEditor
+          names={collectShipmentNames(
+            listEsims(storeId).filter((e) => e.status === "CUSTOMER" || e.status === "PEER"),
+          )}
+          initialBindings={getPosBindings()}
+        />
       </div>
     </div>
   );

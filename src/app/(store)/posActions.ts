@@ -57,10 +57,14 @@ export async function loadPosPresets(): Promise<{ presets: PosPreset[] } | { err
   }
 }
 
-export async function bindPosPresetAction(key: string, presetName: string | null): Promise<PosBinding[]> {
+export async function bindPosPresetAction(
+  key: string,
+  presetName: string | null,
+  previousKey?: string | null,
+): Promise<PosBinding[]> {
   const session = await getSession();
   if (!isPosStore(session.storeId ?? 1)) return [];
-  const next = savePosBinding(key.trim(), presetName);
+  const next = savePosBinding(key.trim(), presetName, previousKey);
   revalidatePath("/pos-settings");
   return next;
 }
